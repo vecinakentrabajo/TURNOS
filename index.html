@@ -1,0 +1,805 @@
+<!doctype html><html><head><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#FFC700"><link rel="icon" href="icon-192.png"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><title>Turnos</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: una columna de móvil. Banda amarilla de taxi arriba (con hueco para tu foto), contenido en tarjetas sobrias, resultados como tira de ticket térmico con puntos guía, pestañas abajo. */
+:root{
+  --bg:#EDEFF2; --surface:#FFFFFF; --ink:#14171A; --ink2:#525A63; --line:#D6DADF;
+  --taxi:#FFC700; --taxi-ink:#1A1500;
+  --ok:#17803F; --ok-bg:#E1F3E8; --bad:#C0262D; --bad-bg:#FBE4E5; --warn:#8F5400; --warn-bg:#FFEFD0;
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;
+  --f-body:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1214; --surface:#181C20; --ink:#EEF1F3; --ink2:#A6AEB6; --line:#2C333A;
+    --taxi:#FFCB1F; --taxi-ink:#1A1500;
+    --ok:#4CC380; --ok-bg:#12301F; --bad:#FF7B72; --bad-bg:#3A1717; --warn:#F2B04A; --warn-bg:#3A2A0D;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1214; --surface:#181C20; --ink:#EEF1F3; --ink2:#A6AEB6; --line:#2C333A;
+  --taxi:#FFCB1F; --taxi-ink:#1A1500;
+  --ok:#4CC380; --ok-bg:#12301F; --bad:#FF7B72; --bad-bg:#3A1717; --warn:#F2B04A; --warn-bg:#3A2A0D;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.4;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--ink)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--taxi);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.disp{font-family:var(--f-display);font-weight:700;letter-spacing:.01em}
+.pad{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.col{max-width:480px;margin:0 auto;width:100%}
+
+/* barra de vista previa */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--ink);color:var(--bg)}
+.bar .col{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding-block:8px}
+.tag{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.seg{display:flex;border:1px solid color-mix(in srgb,var(--bg) 45%,transparent);border-radius:3px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--bg);padding:6px 12px;font-size:13px;font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--taxi);color:var(--taxi-ink)}
+.link{background:none;border:0;color:var(--bg);text-decoration:underline;font-size:12px;padding:6px 0}
+
+/* banda taxi */
+.hero{background:var(--taxi);color:var(--taxi-ink);position:relative}
+.hero::after{content:"";display:block;height:10px;background:repeating-conic-gradient(var(--taxi-ink) 0 25%,transparent 0 50%) 0 0/20px 20px}
+.hero .col{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px 12px}
+.hero small{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.hero h1{margin:2px 0 0;font-family:var(--f-display);font-weight:700;font-size:38px;line-height:1;text-wrap:balance}
+.slot{width:112px;height:64px;flex:none;display:grid;place-items:center}
+.slot img{width:100%;height:100%;object-fit:cover;border-radius:4px}
+
+main.col{padding-block:16px 120px;display:flex;flex-direction:column;gap:14px}
+h2{margin:0;font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.05;text-wrap:balance}
+h3{margin:0;font-family:var(--f-display);font-weight:600;font-size:20px;letter-spacing:.01em}
+p{margin:0}
+.muted{color:var(--ink2)}
+.small{font-size:13px}
+.label{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px}
+.card.flat{border:0;background:transparent;padding:0}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;align-items:center;gap:10px}
+.row.sp{justify-content:space-between}
+.grow{flex:1;min-width:0}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 16px;border-radius:5px;border:2px solid var(--ink);background:var(--surface);color:var(--ink);font-weight:600;font-size:16px;text-align:center}
+.btn.pri{background:var(--ink);color:var(--bg)}
+.btn.yel{background:var(--taxi);border-color:var(--taxi-ink);color:var(--taxi-ink)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.sm{min-height:40px;padding:6px 12px;font-size:14px}
+.btn.ghost{border-color:var(--line);font-weight:500}
+.btn:has(.fi){position:relative;overflow:hidden}
+.fi{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.block{width:100%}
+
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:3px;padding:3px 8px;font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.mute{background:var(--bg);color:var(--ink2)}
+.chip.solid{background:var(--ok);color:#fff}
+.chip.ink{background:var(--ink);color:var(--bg)}
+
+.steps{display:flex;gap:5px}
+.steps span{flex:1;height:6px;background:var(--line)}
+.steps span.on{background:var(--ink)}
+.steps span.done{background:var(--ok)}
+.stepcap{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:-6px}
+.thumbs .th{position:relative}
+.thumbs .th button{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);background:var(--ink);color:var(--bg);display:grid;place-items:center;padding:0}
+.thumbs .th button svg{width:14px;height:14px}
+.inc{border-left:4px solid var(--warn);background:var(--warn-bg);color:var(--warn);padding:8px 10px;border-radius:4px;font-size:14px}
+
+.photo{display:flex;flex-direction:column;gap:10px}
+.photo .top{display:flex;align-items:flex-start;gap:10px;justify-content:space-between}
+.photo .acts{display:flex;gap:8px;flex-wrap:wrap}
+.hint{background:var(--warn-bg);color:var(--warn);border-radius:4px;padding:10px 12px;font-size:14px}
+.demo{border:2px dashed var(--line);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px}
+
+.field{display:grid;grid-template-columns:1fr 120px;gap:4px 10px;align-items:center;padding-block:8px;border-top:1px solid var(--line)}
+.field:first-of-type{border-top:0}
+.field .nm{font-weight:500}
+.field input[type=text],.field input[type=time]{width:100%;min-height:44px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 10px;text-align:right;font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.field input:focus{border-color:var(--ink);outline:none}
+.field .src{grid-column:1/-1;margin-top:-2px}
+.toggle{display:flex;align-items:center;gap:10px;min-height:44px;background:var(--bg);border:2px solid var(--line);border-radius:4px;padding:6px 12px;width:100%;text-align:left}
+.toggle[aria-pressed="true"]{border-color:var(--ok);background:var(--ok-bg);color:var(--ok)}
+
+.banner{border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.banner .disp{font-size:34px;line-height:1}
+.banner.ok{background:var(--ok);color:#fff}
+.banner.bad{background:var(--bad);color:#fff}
+.banner.warn{background:var(--warn-bg);color:var(--warn)}
+.banner.ink{background:var(--ink);color:var(--bg)}
+
+.ticket{position:relative;background:var(--surface);padding:16px 14px 14px;margin-bottom:10px;border-top:1px solid var(--line)}
+.ticket::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:8px;background:linear-gradient(-45deg,transparent 6px,var(--surface) 0),linear-gradient(45deg,transparent 6px,var(--surface) 0);background-size:12px 8px}
+.tl{display:flex;flex-direction:column;gap:2px;padding-block:8px;border-bottom:1px dotted var(--line)}
+.tl:last-child{border-bottom:0}
+.tl .h{display:flex;gap:8px;align-items:baseline}
+.tl .h b{font-weight:600}
+.tl .dots{flex:1;border-bottom:2px dotted var(--line);transform:translateY(-4px)}
+.tl .eq{font-family:var(--f-mono);font-size:13px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.ic{display:inline-flex;width:22px;height:22px;border-radius:50%;align-items:center;justify-content:center;flex:none}
+.ic.ok{background:var(--ok);color:#fff}.ic.bad{background:var(--bad);color:#fff}.ic.mute{background:var(--line);color:var(--ink2)}
+.ic svg{width:14px;height:14px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.pick{min-height:44px;padding:6px 12px;border:2px solid var(--line);border-radius:4px;background:var(--surface);font-weight:500}
+.pick[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+textarea{width:100%;min-height:72px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:8px 10px;resize:vertical}
+textarea:focus,input[type=text]:focus{outline:none;border-color:var(--ink)}
+.inp{width:100%;min-height:44px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 10px}
+
+.list{display:flex;flex-direction:column;gap:8px}
+.li{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px;width:100%;text-align:left}
+.li .dt{font-family:var(--f-display);font-weight:700;font-size:28px;line-height:.95;min-width:54px}
+.li .dt small{display:block;font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--ink2);text-transform:uppercase}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:0;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.stats div{padding:12px;border-left:1px solid var(--line)}
+.stats div:first-child{border-left:0}
+.stats b{display:block;font-family:var(--f-display);font-size:30px;line-height:1}
+.kv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 14px}
+.kv b{display:block;font-family:var(--f-display);font-size:24px;line-height:1.05}
+.mail{border:1px solid var(--line);border-left:4px solid var(--taxi);background:var(--surface);padding:10px 12px;border-radius:4px;font-size:14px}
+
+nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:25;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav.tabs .col{display:flex}
+nav.tabs button{flex:1;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:none;color:var(--ink2);font-size:12px;font-weight:600;position:relative}
+nav.tabs button svg{width:24px;height:24px}
+nav.tabs button[aria-current="true"]{color:var(--ink)}
+nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:4px;background:var(--taxi)}
+.badge{position:absolute;top:6px;left:calc(50% + 8px);background:var(--bad);color:#fff;border-radius:9px;min-width:18px;height:18px;font-size:11px;display:grid;place-items:center;padding:0 5px}
+
+.lock{text-align:center;padding:40px 8px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.lock svg{width:56px;height:56px}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs img{width:72px;height:72px;object-fit:cover;border-radius:4px;border:1px solid var(--line);background:var(--bg)}
+.poster{background:var(--taxi);color:var(--taxi-ink);border-radius:6px;padding:20px 16px 36px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:14px}
+.poster::after{content:"";position:absolute;left:0;right:0;bottom:0;height:14px;background:repeating-conic-gradient(var(--taxi-ink) 0 25%,transparent 0 50%) 0 0/28px 28px}
+.poster h1{margin:0;font-family:var(--f-display);font-weight:700;font-size:48px;line-height:.95;text-wrap:balance}
+.poster .pslot{display:grid;place-items:center;min-height:110px}
+.poster .pslot svg{width:180px;height:auto}
+.poster .pslot img{width:100%;max-height:200px;object-fit:cover;border-radius:4px}
+.earn{background:var(--ink);color:var(--bg);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.earn .big{font-family:var(--f-display);font-weight:700;font-size:56px;line-height:.95;color:var(--taxi);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){.card,.li,.ticket{transition:border-color .15s}}
+</style>
+
+<div class="bar"><div class="col pad">
+  <span class="tag">Vista previa · datos de ejemplo</span>
+  <div class="row">
+    <div class="seg" role="group" aria-label="Ver como">
+      <button id="v-driver" data-act="view" data-v="driver" aria-pressed="true">Mortada</button>
+      <button id="v-master" data-act="view" data-v="master" aria-pressed="false">Iván · máster</button>
+    </div>
+    <button class="link" data-act="reset">Reiniciar</button>
+  </div>
+</div></div>
+<header class="hero" id="hero"><div class="col pad" id="heroIn"></div></header>
+<main class="col pad" id="app"></main>
+<nav class="tabs"><div class="col pad" id="tabs"></div></nav>
+
+<script>
+(function(){
+'use strict';
+var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
+var TODAY='2026-10-21';
+var DOW=['dom','lun','mar','mié','jue','vie','sáb'];
+var MOTIVOS=['Cliente sin dinero','Cliente se fue sin pagar','Me equivoqué de botón','Otro'];
+var SLOTS=[
+ {k:'tpv',t:'Captura del TPV',d:'El total cobrado con datáfono. Puedes subir varias.'},
+ {k:'taximetro',t:'Taxímetro',d:'Ticket, generales (Tarifas 1, 2, 3, horas, km) y odómetro. Una foto o varias.'},
+ {k:'freenow',t:'Resumen de FreeNow',d:'Los viajes del turno y cómo se cobró cada uno. Puedes subir varias capturas.'},
+ {k:'servicios',t:'Servicios con taxímetro',d:'Una captura por cada servicio con TaxímetroError o Tarifa 3. Opcional si no hubo.'}
+];
+var STEPT=['Captura del TPV','Taxímetro','FreeNow y servicios','¿Va todo bien con el coche?'];
+var COCHE=['Ruido raro','Golpe o roce','Aviso en el cuadro','Pinchazo','Otra cosa'];
+var TIPOS=['Gasoil','AdBlue','Pinchazo','Otro gasto'];
+var READ={
+ taximetro:{impresora:361.15,kmTotales:293.1,horaIni:'14:57',horaFin:'05:48',tarifasOk:true,tpvTicket:192.75,tarifa3Decl:2},
+ tpv:{tpv:192.75},
+ freenow:{freenow:160.15,fnApp:46.19,err:50,appTax:50}
+};
+var FIELDS=[
+ {g:'Del ticket',items:[
+  {k:'impresora',l:'Total ticket impresora',s:'taximetro'},{k:'kmTotales',l:'Km totales',s:'taximetro'},
+  {k:'horaIni',l:'Hora inicio',s:'taximetro',time:1},{k:'horaFin',l:'Hora fin',s:'taximetro',time:1},
+  {k:'tpvTicket',l:'TPV del ticket',s:'taximetro'},{k:'tarifa3Decl',l:'Tarifas 3 declaradas',s:'taximetro'}]},
+ {g:'TPV y FreeNow',items:[
+  {k:'tpv',l:'TPV declarado',s:'tpv'},{k:'freenow',l:'FreeNow total',s:'freenow'},
+  {k:'fnApp',l:'FreeNow cobrado por app',s:'freenow'},{k:'err',l:'TaxímetroError',s:'freenow'},
+  {k:'appTax',l:'APP Taxímetro',s:'freenow'}]},
+ {g:'Lo que tecleas tú',items:[
+  {k:'total',l:'Total recaudado del día',s:null},{k:'efectivo',l:'Efectivo que llevo',s:null}]}
+];
+
+/* ---------- lógica ---------- */
+function num(v){if(typeof v==='number')return v;if(v==null||v==='')return NaN;return parseFloat(String(v).replace(/\./g,function(m,i,s){return s.indexOf(',')>-1?'':m}).replace(',','.'));}
+function r2(n){var g=n<0?-1:1;return g*Math.round(Math.abs(n)*100+1e-7)/100;}
+function eur(n){return isFinite(n)?n.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':'—';}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function hours(a,b){if(!a||!b)return NaN;var x=a.split(':'),y=b.split(':');var m1=+x[0]*60+ +x[1],m2=+y[0]*60+ +y[1];if(m2<=m1)m2+=1440;return (m2-m1)/60;}
+function dl(iso){var p=iso.split('-');return p[2]+'/'+p[1];}
+function dw(iso){return DOW[new Date(iso+'T12:00:00').getDay()];}
+function now(){var d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+
+function verify(f,caps,pct,pend){
+ var g=function(k){return num(f[k]);}, o=function(k){var v=num(f[k]);return isFinite(v)?v:0;};
+ var res={checks:[],t3:null,missing:[],incomplete:[],pend:pend||[],reasons:[],overall:'VERDE'};
+ if(!isFinite(g('kmTotales')))res.incomplete.push('km totales');
+ if(!f.horaIni)res.incomplete.push('hora de inicio');
+ if(!f.horaFin)res.incomplete.push('hora de fin');
+ if(!f.tarifasOk)res.incomplete.push('resumen de tarifas');
+ [['impresora','ticket impresora'],['tpvTicket','TPV del ticket'],['tpv','TPV declarado'],['total','total recaudado'],['efectivo','efectivo']].forEach(function(p){if(!isFinite(g(p[0])))res.missing.push(p[1]);});
+ var imp=o('impresora'),fn=o('freenow'),er=o('err'),tpv=o('tpv'),fa=o('fnApp'),at=o('appTax'),tot=o('total'),ef=o('efectivo'),tt=o('tpvTicket');
+ function cmp(l,r){var d=r2(l-r),a=Math.abs(d);return {ok:a<1,note:(a>=0.005&&a<1)?'diferencia de '+eur(a)+' anotada':'',diff:d};}
+ var c1=cmp(imp+fn-er,tot);
+ res.checks.push({n:1,t:'Impresora + FreeNow − TaxímetroError = Total',eq:eur(imp)+' + '+eur(fn)+' − '+eur(er)+' = '+eur(r2(imp+fn-er))+'  (total '+eur(tot)+')',ok:c1.ok,note:c1.note,diff:c1.diff});
+ var tarj=r2(tpv+fa+at);
+ res.checks.push({n:2,t:'TPV + FreeNow App + APP Taxímetro = Total tarjetas',eq:eur(tpv)+' + '+eur(fa)+' + '+eur(at)+' = '+eur(tarj),ok:true,info:true});
+ var c3=cmp(tarj+ef,tot);
+ res.checks.push({n:3,t:'Total tarjetas + Efectivo = Total',eq:eur(tarj)+' + '+eur(ef)+' = '+eur(r2(tarj+ef))+'  (total '+eur(tot)+')',ok:c3.ok,note:c3.note,diff:c3.diff});
+ var parte=r2(tot*pct/100);
+ res.checks.push({n:4,t:'Total × '+(pct/100).toString().replace('.',',')+' = Parte Mortada',eq:eur(tot)+' × '+pct+' % = '+eur(parte),ok:true,info:true});
+ var cob=r2(parte-ef);
+ res.checks.push({n:5,t:'Parte '+pct+' % − Efectivo = Cobras',eq:eur(parte)+' − '+eur(ef)+' = '+eur(cob)+(cob<0?'  (negativa, válida)':''),ok:true,info:true});
+ var c6=cmp(tt,tpv);
+ res.checks.push({n:6,t:'TPV del ticket = TPV declarado',eq:eur(tt)+' = '+eur(tpv),ok:c6.ok,note:c6.note,diff:c6.diff});
+ var decl=g('tarifa3Decl'); if(!isFinite(decl))decl=0;
+ var t3ok=decl===caps;
+ res.t3={decl:decl,caps:caps,ok:t3ok,msg:t3ok?(decl+' declaradas, '+caps+' capturas'):(decl>caps?'Faltan '+(decl-caps)+' captura'+((decl-caps)>1?'s':'')+' de servicio con taxímetro ('+decl+' declaradas, '+caps+' subidas)':'Hay '+(caps-decl)+' captura'+((caps-decl)>1?'s':'')+' más que Tarifas 3 declaradas')};
+ res.parte=parte;res.cobras=cob;
+ res.checks.forEach(function(c){if(!c.ok)res.reasons.push('Falla el check '+c.n+(c.diff?' (diferencia '+eur(Math.abs(c.diff))+')':''));});
+ if(!t3ok)res.reasons.push(res.t3.msg);
+ if(res.incomplete.length)res.overall='BLOQUEADO';
+ else if(res.missing.length)res.overall='FALTAN';
+ else if(res.reasons.length)res.overall='ROJO';
+ else if(res.pend.length)res.overall='PENDIENTE';
+ return res;
+}
+
+/* ---------- estado ---------- */
+var S;
+function mkDay(o){var pend=[];var res=verify(o.f,o.caps,45,pend);return {id:o.id,date:o.date,driver:2,f:o.f,caps:o.caps,pct:45,res:res,estado:res.overall,accepted:!!o.accepted,motivos:o.motivos||[],texto:o.texto||'',pend:pend,incid:[],coche:null};}
+function init(){
+ S={view:'driver',screen:'home',dtab:'home',mtab:'panel',openDay:null,
+  slots:{tpv:'none',taximetro:'none',freenow:'none',servicios:'none'},caps:0,form:{tarifasOk:false},
+  motivos:[],texto:'',sendErr:'',
+  days:[
+   mkDay({id:3,date:'2026-10-14',f:{impresora:241.4,kmTotales:301,horaIni:'15:00',horaFin:'00:48',tarifasOk:true,tpvTicket:172,tarifa3Decl:2,tpv:172,freenow:48,fnApp:0,err:0,appTax:0,total:289.4,efectivo:105},caps:1,motivos:['Otro'],texto:'FreeNow de 48,00 € cobrado en efectivo, debía ser por app.'}),
+   mkDay({id:2,date:'2026-10-13',f:{impresora:236,kmTotales:158.9,horaIni:'15:10',horaFin:'01:45',tarifasOk:true,tpvTicket:160,tarifa3Decl:0,tpv:160,freenow:0,fnApp:0,err:0,appTax:0,total:236,efectivo:76},caps:0}),
+   mkDay({id:1,date:'2026-10-12',f:{impresora:298.5,kmTotales:187.2,horaIni:'14:55',horaFin:'02:05',tarifasOk:true,tpvTicket:205,tarifa3Decl:0,tpv:205,freenow:50,fnApp:50,err:0,appTax:0,total:348.5,efectivo:93.5},caps:0,accepted:true})
+  ],
+  problems:[
+   {id:1,date:'2026-10-14',motivo:'FreeNow cobrado en efectivo (debía ser app)',texto:'Viaje de 48,00 €. Mortada declara 105,00 € de efectivo.',open:true},
+   {id:2,date:'2026-10-13',motivo:'Cliente sin dinero',texto:'Servicio cobrado a medias.',open:false}
+  ],
+  users:[
+   {id:1,name:'Iván Travé Muñoz',role:'MASTER',status:'ACTIVO',pct:0},
+   {id:2,name:'Mortada Chaoui',role:'CONDUCTOR',status:'ACTIVO',pct:45,code:'M2K7-4Q9P'}
+  ],
+  confirm:null,altaOpen:null,reg:'code',regErr:'',upStep:1,slotInc:{},coche:{chips:[],texto:''},sound:true,ex:{tipo:'',importe:'',texto:''},exThumbs:[],exErr:'',nextE:3,expenses:[{id:2,date:'2026-10-14',tipo:'Pinchazo',importe:12,texto:'Reparación del pinchazo en la ronda.',fotos:1,estado:'pendiente'},{id:1,date:'2026-10-13',tipo:'Gasoil',importe:30,texto:'Repostaje.',fotos:1,estado:'aprobado'}],thumbs:{},editing:null,requests:[],reqOpen:null,nextR:1,lastSent:null,
+  log:[{t:'12/10 02:07',x:'Mortada envió el turno del 12/10'},{t:'13/10 01:50',x:'Mortada envió el turno del 13/10'},{t:'14/10 00:52',x:'Mortada envió el turno del 14/10 (en rojo)'}],
+  nextId:4,nextP:3,toast:''};
+ for(var i=3;i<=10;i++)S.users.push({id:i,name:'',role:'CONDUCTOR',status:'LIBRE',pct:45});
+}
+init();
+
+/* ---------- iconos ---------- */
+var I={
+ ok:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>',
+ no:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
+ dash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 8h8"/></svg>',
+ home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+ cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></svg>',
+ list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
+ grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="9" rx="1"/><rect x="13.5" y="3" width="7.5" height="5" rx="1"/><rect x="13.5" y="11" width="7.5" height="10" rx="1"/><rect x="3" y="15" width="7.5" height="6" rx="1"/></svg>',
+ flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>',
+ users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5M16 4.8a3.5 3.5 0 0 1 0 6.4M18 14.8c2.1.6 3.5 2.3 3.9 5.2"/></svg>',
+ euro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 6.5A6 6 0 1 0 17 17.5M4 10h9M4 14h9"/></svg>',
+ lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="1.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>',
+ taxi:'<svg viewBox="0 0 132 64" width="108" aria-hidden="true"><rect x="56" y="3" width="24" height="8" rx="1.5" fill="currentColor"/><path d="M10 44V30c0-3 2-5 5-6l22-5 14-8h40c4 0 7 2 9 5l8 12c2 2 3 4 3 7v9z" fill="currentColor"/><path d="M44 21l9-7h24v12H44z" fill="var(--taxi)"/><path d="M82 14h6l7 12H82z" fill="var(--taxi)"/><circle cx="34" cy="48" r="9" fill="currentColor" stroke="var(--taxi)" stroke-width="3"/><circle cx="96" cy="48" r="9" fill="currentColor" stroke="var(--taxi)" stroke-width="3"/></svg>'
+};
+
+/* ---------- vistas ---------- */
+function chip(e,acc){
+ if(acc)return '<span class="chip solid">Aceptado</span>';
+ var m={VERDE:['ok','Verde'],ROJO:['bad','Rojo'],PENDIENTE:['warn','Pendiente'],BLOQUEADO:['bad','Incompleto'],FALTAN:['warn','Faltan datos']}[e]||['mute',e];
+ return '<span class="chip '+m[0]+'">'+m[1]+'</span>';
+}
+function drv(){return S.users[1];}
+function dayHours(d){var h=hours(d.f.horaIni,d.f.horaFin);return isFinite(h)?h:0;}
+var MONTHS=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function dayById(id){return S.days.filter(function(x){return x.id===id;})[0];}
+function reqFor(id){var r=S.requests.filter(function(x){return x.dayId===id;});return r[r.length-1];}
+function monthStats(){var m=TODAY.slice(0,7),t=0,n=0,best=0;S.days.forEach(function(d){if(d.date.slice(0,7)===m){t+=d.res.parte||0;n++;if(d.res.parte>best)best=d.res.parte;}});return {t:r2(t),n:n,best:best};}
+function resetForm(){S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};}
+function earnCard(ms){
+ var m=MONTHS[+TODAY.slice(5,7)-1];
+ return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
+}
+function regView(){
+ var u=drv();
+ return '<div class="card stack"><span class="label">Solo la primera vez</span><h2>Activa este móvil</h2><p class="muted">Escribe el código que te ha dado Iván. Después el móvil te recuerda y no tienes que volver a registrarte.</p><input class="inp mono" id="regCode" type="text" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX" aria-label="Código de alta" style="text-transform:uppercase;font-size:20px;text-align:center">'+(S.regErr?'<div class="banner bad"><span>'+esc(S.regErr)+'</span></div>':'')+'<button class="btn yel block" data-act="reg">Activar</button></div><div class="demo"><span class="label">Solo vista previa</span><p class="small muted">Código de ejemplo: <b class="mono">'+esc(u.code||'')+'</b></p></div>';
+}
+function welcomeView(){
+ var photo=TAXI_PHOTO?'<img alt="Taxi 4200" src="'+TAXI_PHOTO+'">':I.taxi;
+ return '<section class="poster"><small class="label" style="color:inherit;opacity:.8">Taxi 4200 · Móvil activado</small><h1>Bienvenido, Mortada</h1><div class="pslot">'+photo+'</div><p>Ya estás registrado. Este móvil te recordará.</p></section>'+earnCard(monthStats())+'<button class="btn yel block" data-act="start">Empezar</button>';
+}
+var AC=null;
+function beep(ok){
+ if(!S.sound)return;
+ try{
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  var o=AC.createOscillator(),g=AC.createGain();
+  o.type='sine';o.frequency.value=ok?880:440;g.gain.value=0.05;
+  o.connect(g);g.connect(AC.destination);o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+0.18);o.stop(AC.currentTime+0.2);
+ }catch(e){}
+}
+function SL(k){return SLOTS.filter(function(s){return s.k===k;})[0];}
+function expState(e){
+ var m={pendiente:['warn','Pendiente de Iván'],aprobado:['ok','Aprobado, te lo paga'],pagado:['solid','Pagado'],rechazado:['bad','Rechazado']}[e.estado];
+ return '<span class="chip '+m[0]+'">'+m[1]+'</span>';
+}
+function expRow(e){
+ return '<div class="li"><div class="dt"><small>'+dw(e.date)+'</small>'+dl(e.date)+'</div><div class="grow"><b>'+esc(e.tipo)+' · <span class="mono">'+eur(e.importe)+'</span></b><div class="small muted">'+(e.fotos?e.fotos+' foto'+(e.fotos>1?'s':'')+' de ticket':'Sin ticket')+(e.texto?' · '+esc(e.texto):'')+'</div></div>'+expState(e)+'</div>';
+}
+function driverExp(){
+ var h='<h2>Gastos</h2><p class="muted small">Si pagas algo de tu bolsillo (gasoil, AdBlue, un pinchazo…), súbelo aquí. Iván lo confirma y, si lo aprueba, te lo paga. No hace falta para enviar el turno.</p>';
+ h+='<div class="card stack"><div class="chips">'+TIPOS.map(function(t){return '<button class="pick" data-act="ex-tipo" data-m="'+t+'" aria-pressed="'+(S.ex.tipo===t)+'">'+t+'</button>';}).join('')+'</div>';
+ h+='<div class="field" style="border-top:0"><label class="nm" for="exImporte">Importe</label><input id="exImporte" data-x="importe" type="text" inputmode="decimal" placeholder="0,00" value="'+esc(S.ex.importe)+'" autocomplete="off"></div>';
+ h+='<textarea id="exTxt" data-x="texto" placeholder="Qué has pagado (opcional)" aria-label="Qué has pagado">'+esc(S.ex.texto)+'</textarea>';
+ if(S.exThumbs.length)h+='<div class="thumbs">'+S.exThumbs.map(function(u,i){return '<div class="th"><img alt="Ticket del gasto" src="'+u+'"><button data-act="rm" data-k="gasto" data-i="'+i+'" aria-label="Quitar esta foto">'+I.no+'</button></div>';}).join('')+'</div>';
+ h+='<label class="btn sm yel" style="align-self:flex-start"><input type="file" accept="image/*" multiple class="fi" data-slot="gasto">'+I.cam+' '+(S.exThumbs.length?'Añadir otra foto':'Foto del ticket')+'</label>';
+ if(S.exErr)h+='<div class="banner bad"><span>'+esc(S.exErr)+'</span></div>';
+ h+='<button class="btn pri block" data-act="ex-send">Enviar a Iván para confirmar</button></div>';
+ h+='<h3>Mis gastos</h3><div class="list">'+S.expenses.map(expRow).join('')+'</div>';
+ return h;
+}
+function exMail(e){
+ return '<div class="mail"><span class="label">Correo a vecinakentrabajo@gmail.com</span><div><b>Mortada ha pagado '+eur(e.importe)+' en '+esc(e.tipo.toLowerCase())+'</b></div><div class="muted">'+esc(e.texto||'Sin nota.')+' · '+(e.fotos?e.fotos+' foto de ticket':'Sin ticket')+'</div></div>';
+}
+function exActions(e){
+ if(e.estado==='pendiente')return '<div class="row"><button class="btn sm ghost grow" data-act="ex-no" data-id="'+e.id+'">Rechazar</button><button class="btn sm ok grow" data-act="ex-yes" data-id="'+e.id+'">Confirmo, se lo debo</button></div>';
+ if(e.estado==='aprobado')return '<button class="btn sm pri" style="align-self:flex-start" data-act="ex-paid" data-id="'+e.id+'">Marcar como pagado</button>';
+ return '';
+}
+function masterExp(){
+ var due=0;S.expenses.forEach(function(e){if(e.estado==='aprobado')due+=e.importe;});
+ var h='<h2>Gastos de Mortada</h2><div class="earn"><span class="label" style="color:inherit;opacity:.7">Aprobados, a pagar a Mortada</span><span class="big">'+eur(due)+'</span></div>';
+ S.expenses.forEach(function(e){h+='<div class="stack">'+expRow(e)+exActions(e)+'</div>';});
+ return h;
+}
+function sentToday(){return S.days.some(function(d){return d.date===TODAY&&d.driver===2;});}
+
+function receipt(res){
+ var h='<div class="ticket">';
+ res.checks.forEach(function(c){
+  var ic=c.info?'<span class="ic mute">'+I.dash+'</span>':(c.ok?'<span class="ic ok">'+I.ok+'</span>':'<span class="ic bad">'+I.no+'</span>');
+  h+='<div class="tl"><div class="h"><b>'+c.n+'</b><span>'+esc(c.t)+'</span><span class="dots"></span>'+ic+'</div><div class="eq">'+esc(c.eq)+(c.note?' · '+esc(c.note):'')+'</div></div>';
+ });
+ var t=res.t3;
+ h+='<div class="tl"><div class="h"><b>T3</b><span>Tarifas 3 frente a capturas</span><span class="dots"></span><span class="ic '+(t.ok?'ok':'bad')+'">'+(t.ok?I.ok:I.no)+'</span></div><div class="eq">'+esc(t.msg)+'</div></div>';
+ return h+'</div>';
+}
+
+function renderBar(){
+ $('v-driver').setAttribute('aria-pressed',S.view==='driver');
+ $('v-master').setAttribute('aria-pressed',S.view==='master');
+}
+function $(id){return document.getElementById(id);}
+
+function renderHero(){
+ var d=S.view==='driver';
+ var photo=TAXI_PHOTO?'<div class="slot"><img alt="Taxi 4200" src="'+TAXI_PHOTO+'"></div>':'<div class="slot">'+I.taxi+'</div>';
+ var act=d&&drv().status==='ACTIVO';
+ var first=act&&S.reg==='code';
+ $('hero').hidden=!!(act&&S.reg==='welcome');
+ $('heroIn').innerHTML='<div><small>'+(first?'Taxi 4200 · Primera vez':(d?'Taxi 4200 · Conductor':'Taxi 4200 · Control total'))+'</small><h1>'+(first?'Activa tu móvil':(d?'Hola, Mortada':'Hola, Iván'))+'</h1></div>'+photo;
+}
+
+function renderTabs(){
+ var t=[],cur;
+ var hide=S.view==='driver'&&(S.reg!=='done'||drv().status!=='ACTIVO');
+ document.querySelector('nav.tabs').hidden=hide;
+ if(hide){$('tabs').innerHTML='';return;}
+ if(S.view==='driver'){
+  cur=S.dtab;
+  t=[['home','Inicio',I.home],['up','Subir turno',I.cam],['exp','Gastos',I.euro],['days','Mis días',I.list]];
+ }else{
+  cur=S.mtab;
+  var pend=S.days.filter(function(d){return !d.accepted;}).length+S.requests.filter(function(r){return r.estado==='pendiente';}).length;
+  var pr=S.problems.filter(function(p){return p.open;}).length;
+  var pe=S.expenses.filter(function(x){return x.estado==='pendiente';}).length;
+  t=[['panel','Panel',I.grid,pend],['dias','Días',I.list],['gastos','Gastos',I.euro,pe],['prob','Problemas',I.flag,pr],['users','Usuarios',I.users]];
+ }
+ $('tabs').innerHTML=t.map(function(x){return '<button data-act="tab" data-t="'+x[0]+'" aria-current="'+(cur===x[0]&&!S.openDay?'true':'false')+'">'+x[2]+'<span>'+x[1]+'</span>'+(x[3]?'<span class="badge">'+x[3]+'</span>':'')+'</button>';}).join('');
+}
+
+/* conductor */
+function lockedView(){
+ var u=drv();
+ return '<div class="lock"><span class="muted">'+I.lock+'</span><h2>Acceso desactivado</h2><p class="muted">Tu acceso a la app está '+(u.status==='ARCHIVADO'?'cerrado':'bloqueado')+'. No puedes entrar, subir ni consultar datos. Habla con Iván.</p></div>';
+}
+function driverHome(){
+ var u=drv();
+ var sent=sentToday();
+ var km=0,hh=0,fac=0,parte=0;S.days.forEach(function(d){km+=num(d.f.kmTotales)||0;hh+=dayHours(d);fac+=num(d.f.total)||0;parte+=d.res.parte||0;});
+ var h=earnCard(monthStats())+'<div class="card stack"><div class="row sp"><span class="label">Turno de hoy · '+dw(TODAY)+' '+dl(TODAY)+'</span>'+(sent?'<span class="chip ok">Enviado</span>':'<span class="chip mute">Sin enviar</span>')+'</div>'
+ +'<h2>'+(sent?'Turno enviado. Gracias.':'Sube las fotos del turno')+'</h2>'
+ +'<p class="muted">'+(sent?'Iván lo revisará. Si algo no cuadra, te lo dirá.':'Son unas 5 fotos. La app lee los datos y tú solo confirmas.')+'</p>'
+ +(sent?'':'<button class="btn yel block" data-act="tab" data-t="up">'+I.cam+' Empezar</button>')+'</div>';
+ h+='<div class="card stack"><div class="row sp"><h3>Mis últimos '+S.days.length+' días</h3><span class="chip mute">Suma</span></div><div class="kv">'
+ +'<div><span class="label">Km</span><b class="mono" style="font-size:22px">'+Math.round(km).toLocaleString('es-ES')+' km</b></div>'
+ +'<div><span class="label">Horas</span><b class="mono" style="font-size:22px">'+hh.toFixed(1).replace('.',',')+' h</b></div>'
+ +'<div><span class="label">Facturado</span><b class="mono" style="font-size:22px">'+eur(fac)+'</b></div>'
+ +'<div><span class="label">Mi parte ('+u.pct+' %)</span><b class="mono" style="font-size:22px">'+eur(parte)+'</b></div></div></div>';
+ h+='<div class="card flat"><p class="small muted">Tu móvil está activado y recordado. No tienes que volver a registrarte.</p></div>';
+ return h;
+}
+function driverDays(){
+ var h='<h2>Mis días</h2><p class="muted small">Una vez enviado un día, solo se corrige si Iván lo autoriza.</p><div class="list">';
+ S.days.forEach(function(d){
+  var r=reqFor(d.id),ac='';
+  if(S.reqOpen===d.id)ac='<div class="card stack"><textarea id="reqTxt" placeholder="¿Qué hay que corregir?" aria-label="Qué hay que corregir"></textarea><div class="row"><button class="btn sm ghost" data-act="cancel-req">Cancelar</button><button class="btn sm pri grow" data-act="req-send" data-id="'+d.id+'">Pedir permiso a Iván</button></div></div>';
+  else if(r&&r.estado==='pendiente')ac='<span class="chip warn" style="align-self:flex-start">Corrección pedida a Iván</span>';
+  else if(r&&r.estado==='aprobada')ac='<button class="btn sm yel" style="align-self:flex-start" data-act="edit" data-id="'+d.id+'">Iván lo autorizó: corregir y reenviar</button>';
+  else if(r&&r.estado==='rechazada')ac='<span class="chip bad" style="align-self:flex-start">Corrección rechazada por Iván</span>';
+  else ac='<button class="btn sm ghost" style="align-self:flex-start" data-act="req-open" data-id="'+d.id+'">Pedir corrección</button>';
+  h+='<div class="stack"><div class="li"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted mono">'+Math.round(num(d.f.kmTotales))+' km · '+dayHours(d).toFixed(1).replace('.',',')+' h · parte '+eur(d.res.parte)+'</div></div>'+chip(d.estado,d.accepted)+'</div>'+ac+'</div>';
+ });
+ return h+'</div>';
+}
+function steps(n){
+ var l=['TPV','Taxímetro','FreeNow','Coche','Confirmar','Resultado'];
+ var h='<div class="steps">';
+ for(var i=1;i<=6;i++)h+='<span class="'+(i<n?'done':(i===n?'on':''))+'"></span>';
+ return h+'</div><div class="stepcap">Paso '+n+' de 6 · '+l[n-1]+'</div>';
+}
+function slotCard(s){
+ var st=S.slots[s.k],th=S.thumbs[s.k]||[],n=th.length;
+ if(s.k==='servicios')n=Math.max(S.caps,th.length);
+ var pill=st==='ok'?'<span class="chip ok">'+(n>0?n+' foto'+(n>1?'s':''):'Leída')+'</span>':(st==='dudosa'?'<span class="chip warn">Pendiente</span>':'<span class="chip mute">Sin subir</span>');
+ var h='<div class="card photo"><div class="top"><div class="grow"><b>'+s.t+'</b><div class="small muted">'+s.d+'</div></div>'+pill+'</div>';
+ if(th.length)h+='<div class="thumbs">'+th.map(function(u,i){return '<div class="th"><img alt="Foto subida" src="'+u+'"><button data-act="rm" data-k="'+s.k+'" data-i="'+i+'" aria-label="Quitar esta foto">'+I.no+'</button></div>';}).join('')+'</div><p class="small muted">¿Se ve bien? Si no, quita esa foto con la X y sube otra.</p>';
+ else if(n>0)h+='<p class="small muted">'+n+' captura'+(n>1?'s':'')+' cargada'+(n>1?'s':'')+'.</p>';
+ h+='<div class="acts"><label class="btn sm yel"><input type="file" accept="image/*" multiple class="fi" data-slot="'+s.k+'">'+I.cam+' '+(n?'Añadir otra foto':'Hacer foto o elegir')+'</label>';
+ if(st==='none')h+='<button class="btn sm ghost" data-act="dudosa" data-k="'+s.k+'">Saltar y avisar a Iván</button>';
+ h+='<button class="btn sm ghost" data-act="inc-open" data-k="'+s.k+'">Reportar incidencia</button></div>';
+ var inc=S.slotInc[s.k];
+ if(inc&&inc.open)h+='<div class="stack"><textarea id="inc_'+s.k+'" placeholder="¿Qué ha pasado? (no se sube, no se lee, se ve mal…)" aria-label="Qué ha pasado">'+esc(inc.text||'')+'</textarea><div class="row"><button class="btn sm ghost" data-act="inc-cancel" data-k="'+s.k+'">Cancelar</button><button class="btn sm pri grow" data-act="inc-save" data-k="'+s.k+'">Avisar a Iván y seguir</button></div></div>';
+ else if(inc&&inc.text)h+='<div class="inc"><b>Incidencia anotada:</b> '+esc(inc.text)+'. Iván la confirmará.</div>';
+ else if(st==='dudosa')h+='<div class="inc">Se envía pendiente de confirmar por Iván.</div>';
+ return h+'</div>';
+}
+function carStep(){
+ var c=S.coche,has=c.chips.length||c.texto.trim();
+ return '<div class="card stack"><p class="muted">Opcional. Si notas un ruido, un golpe o un aviso en el cuadro, anótalo y le llega a Iván.</p><div class="chips">'+COCHE.map(function(m){return '<button class="pick" data-act="coche-chip" data-m="'+m+'" aria-pressed="'+(c.chips.indexOf(m)>-1)+'">'+m+'</button>';}).join('')+'</div><textarea id="cocheTxt" data-c="texto" placeholder="Si quieres, cuéntalo en una línea" aria-label="Incidencia del coche">'+esc(c.texto)+'</textarea></div><div class="row"><button class="btn ghost" data-act="step-back">Atrás</button><button class="btn pri grow" id="closeBtn" data-act="to-confirm">'+(has?'Añadir y cerrar turno':'Saltar y cerrar turno')+'</button></div>';
+}
+function driverUpload(){
+ if(!S.editing&&sentToday())return '<div class="lock"><h2>Ya enviaste hoy</h2><p class="muted">No se puede enviar dos veces el mismo día. Si algo está mal, pídele permiso a Iván desde “Mis días”.</p></div>';
+ var h='',n=S.upStep;
+ if(S.editing){var ed=dayById(S.editing);h+='<div class="banner ink"><b>Corrigiendo el día '+dl(ed.date)+'</b><span>Iván lo ha autorizado. Cambia lo que haga falta y reenvía.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="edit-cancel">Cancelar corrección</button></div>';}
+ h+=steps(n)+'<div class="row sp"><h2>'+STEPT[n-1]+'</h2><button class="btn sm ghost" data-act="sound">'+(S.sound?'Sonido: sí':'Sonido: no')+'</button></div>';
+ if(n===1)h+=slotCard(SL('tpv'));
+ if(n===2)h+=slotCard(SL('taximetro'));
+ if(n===3)h+=slotCard(SL('freenow'))+slotCard(SL('servicios'));
+ if(n===4)return h+carStep();
+ h+='<div class="hint">Si una foto sale mal o no se lee, quítala y sube otra. Si no hay forma, “Reportar incidencia” y sigues.</div>';
+ h+='<div class="row">'+(n>1?'<button class="btn ghost" data-act="step-back">Atrás</button>':'')+'<button class="btn pri grow" data-act="step-next">Siguiente</button></div>';
+ if(n===1&&!S.editing)h+='<div class="demo"><span class="label">Solo vista previa</span><p class="small muted">La lectura de fotos es simulada aquí. Cada foto rellena datos de ejemplo.</p><div class="row" style="flex-wrap:wrap"><button class="btn sm ghost" data-act="demo" data-m="ok">Cargar día correcto</button><button class="btn sm ghost" data-act="demo" data-m="bad">Cargar día con fallo</button></div></div>';
+ return h;
+}
+function fieldHtml(f){
+ var st=f.s?S.slots[f.s]:null;
+ var src=f.s?(st==='ok'?'<span class="chip ok">Leído de foto</span>':'<span class="chip warn">Sin foto: escríbelo o déjalo pendiente</span>'):'<span class="chip ink">Lo tecleas tú</span>';
+ var v=S.form[f.k];if(v==null)v='';
+ if(typeof v==='number')v=String(v).replace('.',',');
+ return '<div class="field"><label class="nm" for="f_'+f.k+'">'+f.l+'</label><input id="f_'+f.k+'" data-f="'+f.k+'" type="text" '+(f.time?'placeholder="hh:mm"':'inputmode="decimal"')+' value="'+esc(v)+'" autocomplete="off"><div class="src">'+src+'</div></div>';
+}
+function pendList(){var p=[];SLOTS.forEach(function(s){if(S.slots[s.k]==='dudosa')p.push(s.t);});return p;}
+function liveHtml(){
+ var r=verify(S.form,S.caps,drv().pct,pendList());
+ var map={VERDE:['ok','Verde: todo cuadra'],ROJO:['bad','Rojo: '+(r.reasons[0]||'')],PENDIENTE:['warn','Pendiente de confirmar por Iván'],BLOQUEADO:['bad','Ticket incompleto: falta '+r.incomplete.join(', ')],FALTAN:['warn','Faltan datos: '+r.missing.join(', ')]}[r.overall];
+ return '<span class="chip '+map[0]+'">'+esc(map[1])+'</span>';
+}
+function driverConfirm(){
+ var h=steps(5)+'<h2>¿Está bien lo que he leído?</h2><p class="muted">Revisa cada número. Lo que corrijas es lo que se guarda.</p>';
+ FIELDS.forEach(function(g){
+  h+='<div class="card"><h3 style="margin-bottom:4px">'+g.g+'</h3>';
+  g.items.forEach(function(f){h+=fieldHtml(f);});
+  if(g.g==='Del ticket')h+='<div class="field" style="display:block"><button class="toggle" data-act="tarifasOk" aria-pressed="'+(S.form.tarifasOk?'true':'false')+'">'+(S.form.tarifasOk?I.ok:I.dash).replace('<svg','<svg width="18" height="18"')+' El ticket muestra el resumen de tarifas</button></div>';
+  h+='</div>';
+ });
+ h+='<div class="card row sp"><span class="small muted">Ahora mismo</span><span id="live">'+liveHtml()+'</span></div>';
+ h+='<div class="row"><button class="btn ghost" data-act="back-up">Atrás</button><button class="btn pri grow" data-act="to-result">Ver resultado</button></div>';
+ return h;
+}
+function driverResult(){
+ var r=verify(S.form,S.caps,drv().pct,pendList());
+ var h=steps(6);
+ var b={
+  VERDE:['ok','Verde','Todo cuadra. Puedes enviar.'],
+  ROJO:['bad','Rojo',r.reasons.join(' · ')+'. Puedes enviarlo: quedará pendiente de confirmar por Iván.'],
+  PENDIENTE:['warn','Pendiente','Todo cuadra con lo leído, pero hay fotos sin leer. Iván las confirmará.'],
+  BLOQUEADO:['bad','Ticket incompleto','Falta: '+r.incomplete.join(', ')+'. Consulta el taxímetro y vuelve a subir el ticket. No se puede enviar así.'],
+  FALTAN:['warn','Faltan datos','Falta: '+r.missing.join(', ')+'. Vuelve atrás y complétalo.']
+ }[r.overall];
+ h+='<div class="banner '+b[0]+'"><span class="label" style="color:inherit;opacity:.85">Primer check · automático</span><span class="disp">'+b[1]+'</span><span>'+esc(b[2])+'</span></div>';
+ h+=receipt(r);
+ if(r.pend.length)h+='<div class="hint"><b>Pendiente de confirmar por Iván:</b> '+r.pend.map(esc).join(', ')+'.</div>';
+ var canSend=r.overall==='VERDE'||r.overall==='ROJO'||r.overall==='PENDIENTE';
+ if(canSend&&r.overall!=='VERDE'){
+  h+='<div class="card stack"><h3>Nota para Iván</h3><div class="chips">'+MOTIVOS.map(function(m){return '<button class="pick" data-act="motivo" data-m="'+esc(m)+'" aria-pressed="'+(S.motivos.indexOf(m)>-1)+'">'+m+'</button>';}).join('')+'</div><textarea id="nota" placeholder="Si quieres, cuéntalo en una línea (opcional)" aria-label="Nota para Iván">'+esc(S.texto)+'</textarea></div>';
+ }
+ if(S.sendErr)h+='<div class="banner bad"><span>'+esc(S.sendErr)+'</span></div>';
+ h+='<div class="row"><button class="btn ghost" data-act="to-confirm">Corregir</button>'+(canSend?'<button class="btn '+(r.overall==='VERDE'?'ok':'yel')+' grow" data-act="send">'+(r.overall==='VERDE'?'Enviar turno':'Enviar con aviso a Iván')+'</button>':'')+'</div>';
+ return h;
+}
+function driverSent(){
+ var d=dayById(S.lastSent)||S.days[0];
+ return '<div class="lock"><span class="ic ok" style="width:56px;height:56px">'+I.ok.replace('<svg','<svg style="width:30px;height:30px"')+'</span><h2>Turno enviado</h2><p class="muted">'+(d.estado==='VERDE'?'Todo cuadraba. Iván lo da por bueno cuando lo revise.':'Iván ha recibido un aviso para confirmar lo pendiente.')+'</p><button class="btn pri" data-act="tab" data-t="home">Volver al inicio</button></div>';
+}
+
+/* máster */
+function dayRow(d,showDriver){
+ return '<button class="li" data-act="open" data-id="'+d.id+'"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted">'+esc(S.users[1].name)+' · parte '+eur(d.res.parte)+'</div></div>'+chip(d.estado,d.accepted)+'</button>';
+}
+function mailHtml(d){
+ var why=d.res.reasons.length?d.res.reasons.join('; '):(d.pend.length?'Fotos pendientes: '+d.pend.join(', '):'');
+ if(d.incid&&d.incid.length)why+=(why?' · ':'')+'Incidencias: '+d.incid.map(function(x){return x.slot+' ('+x.text+')';}).join(', ');
+ return '<div class="mail"><span class="label">Correo a vecinakentrabajo@gmail.com</span><div><b>Día '+dl(d.date)+' pendiente de confirmar</b></div><div class="muted">'+esc(why||'Pendiente de tu check.')+'</div></div>';
+}
+function masterPanel(){
+ var pend=S.days.filter(function(d){return !d.accepted&&d.estado!=='VERDE';});
+ var rev=S.days.filter(function(d){return !d.accepted&&d.estado==='VERDE';});
+ var h='<div class="stats"><div><b>'+pend.length+'</b><span class="small muted">A aclarar</span></div><div><b>'+rev.length+'</b><span class="small muted">Por aceptar</span></div><div><b>'+S.problems.filter(function(p){return p.open;}).length+'</b><span class="small muted">Problemas</span></div></div>';
+ var ex=S.expenses.filter(function(x){return x.estado==='pendiente';});
+ if(ex.length){h+='<h2>Gastos por confirmar</h2>';ex.forEach(function(e){h+='<div class="stack">'+exMail(e)+exActions(e)+'</div>';});}
+ var rq=S.requests.filter(function(r){return r.estado==='pendiente';});
+ if(rq.length){h+='<h2>Peticiones de corrección</h2>';rq.forEach(function(r){var dd=dayById(r.dayId);h+='<div class="stack"><div class="mail"><span class="label">Correo a vecinakentrabajo@gmail.com</span><div><b>Mortada pide corregir el día '+dl(dd.date)+'</b></div><div class="muted">'+esc(r.texto||'Sin motivo escrito.')+'</div></div><div class="row"><button class="btn sm ghost grow" data-act="req-no" data-id="'+r.id+'">Rechazar</button><button class="btn sm ok grow" data-act="req-yes" data-id="'+r.id+'">Autorizar corrección</button></div></div>';});}
+ h+='<h2>Pendiente de confirmar</h2>';
+ if(!pend.length)h+='<div class="card"><p class="muted">Nada que aclarar. Todo lo recibido cuadra.</p></div>';
+ pend.forEach(function(d){h+='<div class="stack">'+mailHtml(d)+dayRow(d)+'</div>';});
+ h+='<h2>Verdes por aceptar</h2>';
+ if(!rev.length)h+='<div class="card"><p class="muted">No hay días verdes esperando tu check.</p></div>';
+ rev.forEach(function(d){h+=dayRow(d);});
+ h+='<h3>Registro de actividad</h3><div class="card stack">'+S.log.slice(0,6).map(function(l){return '<div class="row small"><span class="mono muted" style="min-width:84px">'+esc(l.t)+'</span><span>'+esc(l.x)+'</span></div>';}).join('')+'</div>';
+ return h;
+}
+function masterDays(){
+ var h='<h2>Días recibidos</h2><div class="list">';
+ S.days.forEach(function(d){h+=dayRow(d);});
+ return h+'</div>';
+}
+function masterDetail(){
+ var d=S.days.filter(function(x){return x.id===S.openDay;})[0];
+ if(!d)return '';
+ var h='<button class="btn sm ghost" data-act="close" style="align-self:flex-start">Volver</button><div class="row sp"><h2>'+dw(d.date)+' '+dl(d.date)+'</h2>'+chip(d.estado,d.accepted)+'</div>';
+ h+='<p class="muted">Turno de '+esc(S.users[1].name)+' · '+d.f.horaIni+' a '+d.f.horaFin+' · '+Math.round(num(d.f.kmTotales))+' km</p>';
+ if(d.hist&&d.hist.length)h+='<div class="hint">Día corregido tras tu autorización. La versión anterior queda guardada ('+d.hist.length+').</div>';
+ h+=receipt(d.res);
+ h+='<div class="card kv"><div><span class="label">Total</span><b class="mono">'+eur(num(d.f.total))+'</b></div><div><span class="label">Parte Mortada</span><b class="mono">'+eur(d.res.parte)+'</b></div><div><span class="label">Efectivo</span><b class="mono">'+eur(num(d.f.efectivo))+'</b></div><div><span class="label">Cobras</span><b class="mono">'+eur(d.res.cobras)+'</b></div></div>';
+ if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
+ if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Incidencias con fotos</span>'+d.incid.map(function(x){return '<p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>';}).join('')+'</div>';
+ if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
+ if(d.pend.length)h+='<div class="hint">Fotos pendientes de confirmar: '+d.pend.map(esc).join(', ')+'.</div>';
+ if(!d.accepted){
+  var green=d.estado==='VERDE';
+  h+='<button class="btn '+(green?'ok':'pri')+' block" data-act="accept" data-id="'+d.id+'">'+(green?'Aceptar día':'Aclarado: aceptar día')+'</button>';
+  h+='<div class="card stack"><h3>Marcar servicio con problema</h3><div class="chips">'+MOTIVOS.map(function(m){return '<button class="pick" data-act="flag" data-id="'+d.id+'" data-m="'+esc(m)+'">'+m+'</button>';}).join('')+'</div></div>';
+ }
+ return h;
+}
+function masterProb(){
+ var h='<h2>Servicios con problemas</h2>';
+ if(!S.problems.length)h+='<div class="card"><p class="muted">Sin problemas marcados.</p></div>';
+ S.problems.forEach(function(p){
+  h+='<div class="card stack"><div class="row sp"><b>'+dl(p.date)+' · '+esc(p.motivo)+'</b><span class="chip '+(p.open?'bad':'ok')+'">'+(p.open?'Abierto':'Resuelto')+'</span></div>'+(p.texto?'<p class="muted">'+esc(p.texto)+'</p>':'')+(p.open?'<button class="btn sm ghost" style="align-self:flex-start" data-act="resolve" data-id="'+p.id+'">Marcar resuelto</button>':'')+'</div>';
+ });
+ return h;
+}
+function masterUsers(){
+ var h='<h2>Usuarios</h2><p class="muted small">Hasta 10. Cada persona tiene un número fijo que no se reutiliza. Al bloquear, el servidor corta el acceso aunque la app esté instalada.</p><div class="list">';
+ S.users.forEach(function(u){
+  var cls={ACTIVO:'ok',BLOQUEADO:'bad',ARCHIVADO:'mute',LIBRE:'mute','POR ACTIVAR':'warn'}[u.status]||'mute';
+  h+='<div class="card stack"><div class="row sp"><div class="row"><span class="disp" style="font-size:28px;min-width:30px">'+u.id+'</span><div><b>'+(u.name?esc(u.name):'Hueco libre')+'</b><div class="small muted">'+(u.role==='MASTER'?'Máster · control total':(u.status==='LIBRE'?'Sin asignar':'Conductor · '+u.pct+' %'))+'</div></div></div><span class="chip '+cls+'">'+u.status+'</span></div>';
+  if(u.code)h+='<div class="mail"><span class="label">Código de alta, un solo móvil</span><div class="mono"><b>'+u.code+'</b></div></div>';
+  if(u.id===2){
+   if(u.device)h+='<div class="row sp"><span class="small muted">Móvil vinculado: '+esc(u.device)+'</span><button class="btn sm ghost" data-act="unlink">Desvincular</button></div>';
+   if(u.status==='ACTIVO'){
+    if(S.confirm===2)h+='<div class="banner bad"><b>¿Bloquear a '+esc(u.name)+'?</b><span>Dejará de poder entrar, subir y consultar. Su histórico se conserva.</span><div class="row"><button class="btn sm" style="background:var(--surface)" data-act="cancel">Cancelar</button><button class="btn sm pri" data-act="block-yes">Sí, bloquear</button></div></div>';
+    else h+='<button class="btn sm bad" style="align-self:flex-start" data-act="block">Bloquear acceso</button>';
+   }else{
+    h+='<div class="row" style="flex-wrap:wrap"><button class="btn sm ok" data-act="unblock">Reactivar</button>'+(u.status==='BLOQUEADO'?'<button class="btn sm ghost" data-act="archive">Archivar</button>':'')+'</div>';
+   }
+  }
+  if(u.status==='LIBRE'){
+   if(S.altaOpen===u.id)h+='<div class="stack"><input class="inp" id="altaName" type="text" placeholder="Nombre del conductor" aria-label="Nombre del conductor"><div class="row"><button class="btn sm ghost" data-act="cancel">Cancelar</button><button class="btn sm pri" data-act="alta-go" data-id="'+u.id+'">Crear código de alta</button></div></div>';
+   else h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="alta" data-id="'+u.id+'">Dar de alta</button>';
+  }
+  h+='</div>';
+ });
+ return h+'</div>';
+}
+
+function renderMain(){
+ var h='';
+ if(S.view==='driver'){
+  if(drv().status!=='ACTIVO')h=lockedView();
+  else if(S.reg==='code')h=regView();
+  else if(S.reg==='welcome')h=welcomeView();
+  else if(S.dtab==='home')h=driverHome();
+  else if(S.dtab==='exp')h=driverExp();
+  else if(S.dtab==='days')h=driverDays();
+  else{
+   h={up:driverUpload,confirm:driverConfirm,result:driverResult,sent:driverSent}[S.screen]?{up:driverUpload,confirm:driverConfirm,result:driverResult,sent:driverSent}[S.screen]():driverUpload();
+  }
+ }else{
+  if(S.openDay)h=masterDetail();
+  else h={panel:masterPanel,dias:masterDays,gastos:masterExp,prob:masterProb,users:masterUsers}[S.mtab]();
+ }
+ $('app').innerHTML=h;
+}
+function render(keep){renderBar();renderHero();renderMain();renderTabs();if(!keep)window.scrollTo(0,0);}
+
+/* ---------- acciones ---------- */
+function log(x){S.log.unshift({t:dl(TODAY)+' '+now(),x:x});}
+function applyRead(k){var r=READ[k];if(!r)return;for(var a in r)S.form[a]=r[a];}
+function startUp(){S.dtab='up';S.screen='up';}
+function act(a,d){
+ switch(a){
+  case 'view':S.view=d.v;S.openDay=null;render();return;
+  case 'reset':init();render();return;
+  case 'tab':
+   if(S.view==='driver'){S.dtab=d.t;if(d.t==='up'&&S.screen==='sent')S.screen='up';if(d.t==='up'&&S.screen==='home')S.screen='up';}
+   else{S.mtab=d.t;S.openDay=null;S.confirm=null;S.altaOpen=null;}
+   render();return;
+  case 'dudosa':S.slots[d.k]='dudosa';render(true);return;
+  case 'tarifasOk':S.form.tarifasOk=!S.form.tarifasOk;render(true);return;
+  case 'to-confirm':S.dtab='up';S.screen='confirm';render();return;
+  case 'back-up':S.screen='up';S.upStep=4;render();return;
+  case 'to-result':S.screen='result';S.sendErr='';render();return;
+  case 'motivo':var i=S.motivos.indexOf(d.m);if(i>-1)S.motivos.splice(i,1);else S.motivos.push(d.m);var n=$('nota');if(n)S.texto=n.value;render(true);return;
+  case 'demo':
+   ['taximetro','tpv','freenow'].forEach(function(k){S.slots[k]='ok';applyRead(k);});
+   S.slots.servicios='ok';S.caps=d.m==='ok'?2:1;S.form.total=471.3;S.form.efectivo=d.m==='ok'?182.36:150;
+   S.dtab='up';S.screen='confirm';render();return;
+  case 'send':send();return;
+  case 'step-next':if(S.upStep<4){S.upStep++;beep(1);render();}return;
+  case 'step-back':if(S.upStep>1){S.upStep--;render();}return;
+  case 'sound':S.sound=!S.sound;if(S.sound)beep(1);render(true);return;
+  case 'rm':
+   if(d.k==='gasto'){S.exThumbs.splice(+d.i,1);}
+   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
+   render(true);return;
+  case 'inc-open':S.slotInc[d.k]=S.slotInc[d.k]||{};S.slotInc[d.k].open=true;render(true);return;
+  case 'inc-cancel':S.slotInc[d.k]={open:false,text:(S.slotInc[d.k]||{}).text};render(true);return;
+  case 'inc-save':
+   var it=$('inc_'+d.k);var tx2=it?it.value.trim():'';
+   S.slotInc[d.k]={open:false,text:tx2||'Sin detalle'};S.slots[d.k]='dudosa';render(true);return;
+  case 'coche-chip':var ci=S.coche.chips.indexOf(d.m);if(ci>-1)S.coche.chips.splice(ci,1);else S.coche.chips.push(d.m);render(true);return;
+  case 'ex-tipo':S.ex.tipo=d.m;render(true);return;
+  case 'ex-send':
+   var imp2=num(S.ex.importe);
+   if(!S.ex.tipo||!(imp2>0)){S.exErr='Elige el tipo de gasto y escribe el importe.';render(true);return;}
+   S.expenses.unshift({id:S.nextE++,date:TODAY,tipo:S.ex.tipo,importe:r2(imp2),texto:S.ex.texto||'',fotos:S.exThumbs.length,estado:'pendiente'});
+   log('Mortada subió un gasto: '+S.ex.tipo+' '+eur(r2(imp2)));S.ex={tipo:'',importe:'',texto:''};S.exThumbs=[];S.exErr='';beep(1);render(true);return;
+  case 'ex-yes':case 'ex-no':case 'ex-paid':
+   S.expenses.forEach(function(e){if(e.id===+d.id){e.estado=a==='ex-yes'?'aprobado':(a==='ex-no'?'rechazado':'pagado');log('Iván '+(a==='ex-yes'?'confirmó':(a==='ex-no'?'rechazó':'pagó'))+' el gasto de '+e.tipo+' ('+eur(e.importe)+')');}});
+   render(true);return;
+  case 'reg':
+   var cv=$('regCode');var val=(cv&&cv.value||'').trim().toUpperCase();
+   if(val&&val===S.users[1].code){S.reg='welcome';S.users[1].device='Móvil de Mortada';S.users[1].code=null;S.regErr='';log('Mortada activó su móvil');}
+   else S.regErr='Ese código no es válido. Pídele uno nuevo a Iván.';
+   render();return;
+  case 'start':S.reg='done';S.dtab='home';render();return;
+  case 'unlink':
+   var cc=function(){return Math.random().toString(36).slice(2,6).toUpperCase();};
+   S.users[1].device=null;S.users[1].code=cc()+'-'+cc();S.reg='code';S.regErr='';log('Iván desvinculó el móvil de Mortada');render(true);return;
+  case 'quitar':
+   S.caps=Math.max(0,S.caps-1);if(S.thumbs.servicios)S.thumbs.servicios.pop();if(S.caps===0)S.slots.servicios='none';render(true);return;
+  case 'req-open':S.reqOpen=+d.id;render(true);return;
+  case 'cancel-req':S.reqOpen=null;render(true);return;
+  case 'req-send':
+   var tx=$('reqTxt');S.requests.push({id:S.nextR++,dayId:+d.id,texto:tx?tx.value.trim():'',estado:'pendiente'});
+   log('Mortada pidió corregir el día '+dl(dayById(+d.id).date));S.reqOpen=null;render(true);return;
+  case 'req-yes':case 'req-no':
+   S.requests.forEach(function(r){if(r.id===+d.id){r.estado=a==='req-yes'?'aprobada':'rechazada';log('Iván '+(a==='req-yes'?'autorizó':'rechazó')+' corregir el día '+dl(dayById(r.dayId).date));}});
+   render(true);return;
+  case 'edit':
+   var ed=dayById(+d.id);resetForm();for(var q in ed.f)S.form[q]=ed.f[q];
+   SLOTS.forEach(function(s){S.slots[s.k]='ok';});S.slots.servicios=ed.caps?'ok':'none';S.caps=ed.caps;
+   S.motivos=ed.motivos.slice();S.texto=ed.texto;S.editing=ed.id;S.dtab='up';S.screen='up';render();return;
+  case 'edit-cancel':S.editing=null;resetForm();S.dtab='days';render();return;
+  case 'open':S.openDay=+d.id;render();return;
+  case 'close':S.openDay=null;render();return;
+  case 'accept':
+   S.days.forEach(function(x){if(x.id===+d.id){x.accepted=true;log('Iván aceptó el día '+dl(x.date));}});
+   S.openDay=null;render();return;
+  case 'flag':
+   var dd=S.days.filter(function(x){return x.id===+d.id;})[0];
+   S.problems.unshift({id:S.nextP++,date:dd.date,motivo:d.m,texto:'Marcado por Iván desde el día '+dl(dd.date)+'.',open:true});
+   log('Iván marcó un problema en el día '+dl(dd.date)+': '+d.m);S.mtab='prob';S.openDay=null;render();return;
+  case 'resolve':S.problems.forEach(function(p){if(p.id===+d.id)p.open=false;});log('Iván resolvió un problema');render(true);return;
+  case 'block':S.confirm=2;render(true);return;
+  case 'cancel':S.confirm=null;S.altaOpen=null;render(true);return;
+  case 'block-yes':S.users[1].status='BLOQUEADO';S.confirm=null;log('Iván bloqueó a Mortada');render(true);return;
+  case 'unblock':S.users[1].status='ACTIVO';log('Iván reactivó a Mortada');render(true);return;
+  case 'archive':S.users[1].status='ARCHIVADO';log('Iván archivó a Mortada (histórico conservado)');render(true);return;
+  case 'alta':S.altaOpen=+d.id;render(true);return;
+  case 'alta-go':
+   var nm=$('altaName').value.trim();if(!nm){$('altaName').focus();return;}
+   var u=S.users[+d.id-1];u.name=nm;u.status='POR ACTIVAR';
+   var c=function(){return Math.random().toString(36).slice(2,6).toUpperCase();};u.code=c()+'-'+c();
+   S.altaOpen=null;log('Iván dio de alta a '+nm+' (usuario '+u.id+')');render(true);return;
+ }
+}
+function send(){
+ if(!S.editing&&sentToday()){S.sendErr='Ya hay un turno enviado hoy para este conductor.';render(true);return;}
+ var n=$('nota');if(n)S.texto=n.value;
+ var pend=pendList();var res=verify(S.form,S.caps,drv().pct,pend);
+ var f={};for(var k in S.form)f[k]=S.form[k];
+ var inc=[];SLOTS.forEach(function(s){var x=S.slotInc[s.k];if(x&&x.text)inc.push({slot:s.t,text:x.text});});
+ var co={chips:S.coche.chips.slice(),texto:S.coche.texto.trim()};var coche=(co.chips.length||co.texto)?co:null;
+ var date;
+ if(S.editing){
+  var e=dayById(S.editing);e.hist=e.hist||[];e.hist.push({f:e.f,estado:e.estado,res:e.res});
+  e.f=f;e.caps=S.caps;e.res=res;e.estado=res.overall;e.pend=pend;e.accepted=false;e.motivos=S.motivos.slice();e.texto=S.texto;e.incid=inc;e.coche=coche;
+  S.requests.forEach(function(r){if(r.dayId===e.id&&r.estado==='aprobada')r.estado='hecha';});
+  log('Mortada reenvió corregido el día '+dl(e.date));S.lastSent=e.id;S.editing=null;
+ }else{
+  var day=mkDay({id:S.nextId++,date:TODAY,f:f,caps:S.caps});day.pend=pend;day.res=res;day.estado=res.overall;day.motivos=S.motivos.slice();day.texto=S.texto;day.incid=inc;day.coche=coche;
+  S.days.unshift(day);S.lastSent=day.id;
+  S.motivos.forEach(function(m){S.problems.unshift({id:S.nextP++,date:TODAY,motivo:m,texto:S.texto,open:true});});
+  inc.forEach(function(x){S.problems.unshift({id:S.nextP++,date:TODAY,motivo:'Incidencia con foto: '+x.slot,texto:x.text,open:true});});
+  if(coche)S.problems.unshift({id:S.nextP++,date:TODAY,motivo:'Incidencia del coche'+(coche.chips.length?': '+coche.chips.join(', '):''),texto:coche.texto,open:true});
+  log('Mortada envió el turno del '+dl(TODAY)+(res.overall==='VERDE'?'':' ('+res.overall.toLowerCase()+')'));
+ }
+ beep(1);resetForm();S.screen='sent';S.dtab='up';render();
+}
+
+document.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(!b)return;act(b.dataset.act,b.dataset);});
+document.addEventListener('input',function(e){
+ var t=e.target;
+ if(!t.dataset)return;
+ if(t.dataset.f){S.form[t.dataset.f]=t.value;var l=$('live');if(l)l.innerHTML=liveHtml();}
+ if(t.dataset.x)S.ex[t.dataset.x]=t.value;
+ if(t.dataset.c){S.coche.texto=t.value;var b=$('closeBtn');if(b)b.textContent=(S.coche.chips.length||t.value.trim())?'Añadir y cerrar turno':'Saltar y cerrar turno';}
+});
+document.addEventListener('change',function(e){
+ var t=e.target;
+ if(t.dataset&&t.dataset.slot&&t.files&&t.files.length){
+  var k=t.dataset.slot;
+  var cur=(k==='gasto')?S.exThumbs:(S.thumbs[k]=S.thumbs[k]||[]);
+  var added=0;
+  Array.prototype.slice.call(t.files).forEach(function(f){
+   if(cur.length>=6)return;
+   var u='';try{u=URL.createObjectURL(f);}catch(x){}
+   if(!u)return;
+   cur.push(u);added++;if(k==='servicios')S.caps++;
+  });
+  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);}
+  if(added)beep(1);
+  try{t.value='';}catch(x){}
+  render(true);
+ }
+});
+render();
+})();
+</script>
+</body></html>
