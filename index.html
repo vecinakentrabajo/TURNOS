@@ -430,7 +430,8 @@ function shiftDate(){
 function dayHours(d){var h=hours(d.f.horaIni,d.f.horaFin);return isFinite(h)?h:0;}
 var MONTHS=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 function dayById(id){return S.days.filter(function(x){return x.id===id;})[0];}
-function reqFor(id){var r=S.requests.filter(function(x){return x.dayId===id;});return r[r.length-1];}
+function reqFor(id){var r=S.requests.filter(function(x){return x.dayId===id&&!x.fest;});return r[r.length-1];}
+function festFor(id){var r=S.requests.filter(function(x){return x.dayId===id&&x.fest;});return r[r.length-1];}
 function monthStats(){var m=TODAY.slice(0,7),t=0,n=0,best=0;S.days.forEach(function(d){if(d.date.slice(0,7)===m){t+=d.res.parte||0;n++;if(d.res.parte>best)best=d.res.parte;}});return {t:r2(t),n:n,best:best};}
 var DRAFTK='turnos_borrador_v1';
 function idb(op,key,val){return new Promise(function(res){try{var r=indexedDB.open('turnos_borrador',1);r.onupgradeneeded=function(){r.result.createObjectStore('p');};r.onerror=function(){res(null);};r.onsuccess=function(){try{var db=r.result,tx=db.transaction('p',op==='get'?'readonly':'readwrite'),st=tx.objectStore('p'),q=op==='get'?st.get(key):(op==='put'?st.put(val,key):st.delete(key));q.onsuccess=function(){res(q.result===undefined?null:q.result);};q.onerror=function(){res(null);};tx.oncomplete=function(){try{db.close();}catch(e){}};}catch(e){res(null);}};}catch(e){res(null);}});}
@@ -464,7 +465,7 @@ function draftRestore(){
  for(var k in S.slots){if(S.slots[k]==='ok'&&!(S.thumbs[k]||[]).length&&!(k==='servicios'&&S.caps))S.slots[k]='none';}
  render();window.scrollTo(0,0);
 }
-function resetForm(){clearDraft();S.fn=[];S.ticketDate=null;S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;}
+function resetForm(){clearDraft();S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;}
 function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
@@ -591,6 +592,24 @@ function lockedView(){
  var u=drv();
  return '<div class="lock"><span class="muted">'+I.lock+'</span><h2>Acceso desactivado</h2><p class="muted">Tu acceso a la app está '+(u.status==='ARCHIVADO'?'cerrado':'bloqueado')+'. No puedes entrar, subir ni consultar datos. Habla con Iván.</p></div>';
 }
+function lastOwnDate(){var m='';S.days.forEach(function(d){if(d.driver===(S.me&&S.me.id)&&d.date>m)m=d.date;});return m;}
+function weekSum(from,to){var t=0,n=0;S.days.forEach(function(d){if(d.driver===(S.me&&S.me.id)&&d.date>=from&&d.date<=to){t+=d.res.parte||0;n++;}});return {t:r2(t),n:n};}
+function isoAdd(iso0,n){var d=new Date(iso0+'T12:00:00');d.setDate(d.getDate()+n);return iso(d);}
+function animoHtml(){
+ var c=S.cmp;if(!LIVE||!c||!c.conectado)return '';
+ var td=TODAY,w=weekSum(isoAdd(td,-6),td),out=[];
+ if(w.n>=2){
+  if(c.semanaAnioPasado&&c.semanaAnioPasado.n>=3){var df=r2(w.t-c.semanaAnioPasado.t);out.push(df>=0?'Esta semana llevas '+eur(w.t)+', '+eur(df)+' más que la misma semana del año pasado ('+eur(c.semanaAnioPasado.t)+'). Vas bien.':'Esta semana llevas '+eur(w.t)+'; la misma semana del año pasado fueron '+eur(c.semanaAnioPasado.t)+'. Aún queda margen.');}
+  if(c.media4&&c.media4.n>=6&&w.t>c.media4.t)out.push('Has superado tu media semanal de las últimas semanas ('+eur(c.media4.t)+'). 💪');
+ }
+ var ms=monthStats();
+ if(c.mesAnioPasadoHastaHoy&&c.mesAnioPasadoHastaHoy.n>=5&&ms.n>=3){var dm=r2(ms.t-c.mesAnioPasadoHastaHoy.t);out.push(dm>=0?'Este mes llevas '+eur(ms.t)+', más que por estas fechas del año pasado ('+eur(c.mesAnioPasadoHastaHoy.t)+').':'Este mes llevas '+eur(ms.t)+'; por estas fechas del año pasado ibas por '+eur(c.mesAnioPasadoHastaHoy.t)+'.');}
+ return out.length?'<div class="card stack"><span class="label">Cómo vas</span>'+out.map(function(x){return '<p>'+esc(x)+'</p>';}).join('')+'</div>':'';
+}
+function idleHtml(){
+ var l=lastOwnDate();if(!l||!LIVE)return '';var n=dayDiff(TODAY,l);
+ return n>=4?'<div class="hint">Hace '+n+' días que no subes ningún turno. Si has descansado, no pasa nada; si has trabajado, súbelo cuando puedas.</div>':'';
+}
 function driverHome(){
  var u=drv();
  var sent=sentToday();
@@ -599,6 +618,7 @@ function driverHome(){
  +'<h2>'+(sent?'Turno enviado. Gracias.':'Sube las fotos del turno')+'</h2>'
  +'<p class="muted">'+(sent?'Iván lo revisará. Si algo no cuadra, te lo dirá.':(LIVE?'Son unas 5 fotos. Súbelas y escribe los números que ves en ellas.':'Son unas 5 fotos. La app lee los datos y tú solo confirmas.'))+'</p>'
  +(sent?'':'<button class="btn yel block" data-act="tab" data-t="up">'+I.cam+' Empezar</button>')+'</div>';
+ h+=idleHtml()+animoHtml();
  h+='<div class="card stack"><div class="row sp"><h3>Mis últimos '+S.days.length+' días</h3><span class="chip mute">Suma</span></div><div class="kv">'
  +'<div><span class="label">Km</span><b class="mono" style="font-size:22px">'+Math.round(km).toLocaleString('es-ES')+' km</b></div>'
  +'<div><span class="label">Horas</span><b class="mono" style="font-size:22px">'+hh.toFixed(1).replace('.',',')+' h</b></div>'
@@ -616,6 +636,11 @@ function driverDays(){
   else if(r&&r.estado==='aprobada')ac='<button class="btn sm yel" style="align-self:flex-start" data-act="edit" data-id="'+d.id+'">Iván lo autorizó: corregir y reenviar</button>';
   else if(r&&r.estado==='rechazada')ac='<span class="chip bad" style="align-self:flex-start">Corrección rechazada por Iván</span>';
   else ac='<button class="btn sm ghost" style="align-self:flex-start" data-act="req-open" data-id="'+d.id+'">Pedir corrección</button>';
+  var fq=festFor(d.id);
+  if(d.pct===50)ac+='<span class="chip ok" style="align-self:flex-start">Festivo al 50 % concedido</span>';
+  else if(fq&&fq.estado==='pendiente')ac+='<span class="chip warn" style="align-self:flex-start">50 % por festivo pedido a Iván</span>';
+  else if(fq&&fq.estado==='rechazada')ac+='<span class="chip bad" style="align-self:flex-start">50 % por festivo rechazado</span>';
+  else ac+='<button class="btn sm ghost" style="align-self:flex-start" data-act="fest-send" data-id="'+d.id+'">Solicitar 50 % por día festivo</button>';
   h+='<div class="stack"><div class="li"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted mono">'+Math.round(num(d.f.kmTotales))+' km · '+dayHours(d).toFixed(1).replace('.',',')+' h · parte '+eur(d.res.parte)+'</div></div>'+chip(d.estado,d.accepted)+'</div>'+ac+'</div>';
  });
  return h+'</div>';
@@ -642,6 +667,7 @@ function slotCard(s){
  }
 
  h+=inlineHtml(s.k);
+ h+=blurBanner(s.k);
  h+='<div class="acts"><label class="btn sm yel"><input type="file" accept="image/*" multiple class="fi" data-slot="'+s.k+'">'+I.cam+' '+(n?'Añadir otra foto':'Hacer foto o elegir')+'</label>';
  if(st==='none')h+='<button class="btn sm ghost" data-act="dudosa" data-k="'+s.k+'">Saltar y avisar a Iván</button>';
  h+='<button class="btn sm ghost" data-act="inc-open" data-k="'+s.k+'">Reportar incidencia</button></div>';
@@ -664,7 +690,7 @@ function driverUpload(){
  h+=steps(n)+'<div class="row sp"><h2>'+STEPT[n-1]+'</h2><button class="btn sm ghost" data-act="sound">'+(S.sound?'Sonido: sí':'Sonido: no')+'</button></div>';
  if(n===1)h+=fnStep();
  if(n===2)h+=slotCard(SL('taximetro'))+dateWarn();
- if(n===3)h+=slotCard(SL('tpv'));
+ if(n===3)h+=slotCard(SL('tpv'))+tpvWarn();
  if(n===4)return h+carStep();
  h+='<div class="hint">Si una foto sale mal o no se lee, quítala y sube otra. Si no hay forma, “Reportar incidencia” y sigues.</div>';
  h+='<div class="row">'+(n>1?'<button class="btn ghost" data-act="step-back">Atrás</button>':'')+'<button class="btn pri grow" data-act="step-next">Siguiente</button></div>';
@@ -673,6 +699,49 @@ function driverUpload(){
 }
 var FN_MAX=30;
 function fnNew(){return {imp:'',metodo:'app',taxi:false,cerrado:false,propSi:false,prop:'',conf:false};}
+function fnParse(t){
+ var T=String(t||'').replace(/\r/g,''),N='(\\d{1,4}[.,]\\d{2})';
+ function cv(x){return x==null?null:parseFloat(String(x).replace(',','.'));}
+ function first(re,skip){var g=new RegExp(re.source,'ig'),m;while((m=g.exec(T))){if(skip&&skip(T,m))continue;return cv(m[1]);}return null;}
+ var gross=first(new RegExp('(?:pago\\s*v[ií]a\\s*app|trayecto)[^\\d\\n]{0,14}'+N),function(tx,m){var b=tx.slice(Math.max(0,m.index-6),m.index).toLowerCase();return /del\s*$/.test(b)||/completado|cancelado/i.test(m[0]);});
+ var com=first(new RegExp('comisi[oó]n(?!\\s*total)[^\\d\\n]{0,14}'+N));
+ if(com==null)com=first(new RegExp('comisi[oó]n[^\\d\\n]{0,14}'+N));
+ var prop=first(new RegExp('propinas?[^\\d\\n]{0,10}'+N));
+ var net=first(new RegExp('ingresos\\s*netos[^\\d]{0,40}'+N));
+ var cer=/precio\s*cerrado/i.test(T);
+ var r={cerrado:cer};
+ var all=[],ga=new RegExp(N,'g'),mm;while((mm=ga.exec(T)))all.push(cv(mm[1]));
+ var cuadra=function(x){return all.some(function(a){return Math.abs(x-a)<0.03;});};
+ if(gross!=null&&gross>0&&gross<2000){r.imp=gross;r.q=(com!=null&&(cuadra(gross-com)||cuadra(gross-com+(prop||0))))?'ok':'revisar';}
+ else if(net!=null&&com!=null){r.imp=Math.round((net+com)*100)/100;r.q='revisar';}
+ if(prop!=null&&prop>0)r.prop=prop;
+ if(com!=null)r.com=com;if(net!=null)r.net=net;
+ return r;
+}
+function fnReadFile(file){
+ return Promise.all([ocrWorker(),ocrBitmap(file)]).then(function(a){
+  var wk=a[0],bm=a[1],w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,tw=Math.min(1200,Math.max(w0,900)),th=Math.round(h0*tw/w0);
+  var g=ocrGray(bm,0,0,w0,h0,tw,th),sum=0,i;for(i=0;i<g.length;i+=7)sum+=g[i];
+  if(sum/Math.ceil(g.length/7)<120){for(i=0;i<g.length;i++)g[i]=255-g[i];}
+  return ocrRec(wk,ocrCanvas(g,tw,th),6).then(function(d){return fnParse(d.text);});
+ });
+}
+window.__fnReadFile=fnReadFile;window.__fnParse=fnParse;
+function fnScan(start,files){
+ if(!LIVE||window.TURNOS_NO_OCR||!window.Promise)return;
+ var gen=S.gen;
+ files.forEach(function(f,j){
+  var card=(S.fn||[])[start+j];if(!card)return;card.reading=true;
+  ocrQ=ocrQ.then(function(){return gen===S.gen?fnReadFile(f):null;}).then(function(r){
+   if(gen!==S.gen||!r)return;card.reading=false;
+   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.ocr=r.q||'revisar';}
+   if(r.prop&&!card.propSi&&String(card.prop)===''){card.propSi=true;card.prop=r.prop.toFixed(2).replace('.',',');}
+   if(r.cerrado)card.cerrado=true;
+   fnSync();
+  },function(){card.reading=false;}).then(function(){card.reading=false;ocrRefresh();});
+ });
+ render(true);
+}
 function fnNum(v){var x=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(x)?x:0;}
 function fnRare(x){return !!(x.taxi||x.cerrado||x.metodo!=='app');}
 function fnTotals(){
@@ -699,6 +768,8 @@ function fnCard(x,i,u){
  var rare=fnRare(x),cls='fnc'+(x.conf?' done':(rare?' rare':''));
  function pk(act,k,v,txt,on){return '<button class="pick" data-act="'+act+'" data-i="'+i+'" data-fk="'+k+'" data-v="'+v+'" aria-pressed="'+(on?'true':'false')+'">'+txt+'</button>';}
  var h='<div class="'+cls+'"><div class="top2">'+(u?'<img alt="Captura del servicio '+(i+1)+'" src="'+u+'">':'')+'<div class="grow"><b>Servicio '+(i+1)+'</b><div class="small muted">'+(rare&&!x.conf?'Poco habitual: compruébalo':(x.conf?'Comprobado':'Normal: pago por app'))+'</div></div><button class="btn sm ghost" data-act="rm" data-k="freenow" data-i="'+i+'" aria-label="Quitar este servicio">'+I.no+'</button></div>';
+ if(x.reading)h+='<div class="small muted">Leyendo la captura…</div>';
+ else if(x.ocr)h+='<div class="small"><span class="chip '+(x.ocr==='ok'?'ok':'warn')+'">'+(x.ocr==='ok'?'Leído y cuadra (importe − comisión = neto)':'Leído de la captura: compruébalo')+'</span></div>';
  h+='<div><div class="lb">Importe total del servicio (€)</div><input class="inp imp" data-fn="'+i+'" data-fk="imp" type="text" inputmode="decimal" placeholder="0,00" value="'+esc(String(x.imp).replace('.',','))+'" autocomplete="off"></div>';
  h+='<div><div class="lb">Cómo se cobró</div><div class="chips">'+pk('fn-set','metodo','app','App',x.metodo==='app')+pk('fn-set','metodo','efectivo','Efectivo',x.metodo==='efectivo')+pk('fn-set','metodo','datafono','Datáfono',x.metodo==='datafono')+'</div></div>';
  h+='<div class="chips">'+pk('fn-tog','taxi','1','Hecho con el taxímetro (Tarifa 3)',x.taxi)+pk('fn-tog','cerrado','1','Precio cerrado',x.cerrado)+'</div>';
@@ -715,6 +786,14 @@ function dateWarn(){
  var txt=df<0?'El ticket empezó el '+dFmt(S.ticketDate)+' y este turno se guardará como '+dFmt(sd)+'. ¿Foto de otro día?':'El ticket empieza el '+dFmt(S.ticketDate)+', después de la fecha de este turno ('+dFmt(sd)+'). ¿Foto equivocada?';
  return '<div class="banner bad"><b>Revisa la fecha</b><span>'+txt+'</span>'+(S.mine?'<button class="btn sm yel" style="align-self:flex-start" data-act="use-ticket-date">Usar la fecha del ticket</button>':'<span class="small">Si es correcta, sigue: Iván lo verá marcado.</span>')+'</div>';
 }
+function tpvWarn(){
+ if(!LIVE||!S.tpvDate||S.slots.tpv!=='ok')return '';
+ var base=S.ticketDate||shiftDate(),df=dayDiff(S.tpvDate,base);
+ var n=Object.keys(S.tpvParts||{}).length;
+ var sum=n>1?'<div class="hint">Has subido '+n+' fotos de TPV: la app las suma ('+eur(num(S.form.tpv))+').</div>':'';
+ if(df===0||df===1)return sum+'<div class="banner ok"><span>✓ La fecha del TPV ('+dFmt(S.tpvDate)+') es coherente con el turno.</span></div>';
+ return sum+'<div class="banner bad"><b>Revisa la fecha del TPV</b><span>El TPV es del '+dFmt(S.tpvDate)+' y el turno empezó el '+dFmt(base)+'. Lo normal es el mismo día o el siguiente. Si es correcto, sigue: Iván lo verá marcado.</span></div>';
+}
 function fnStep(){
  var th=S.thumbs.freenow||[],L=S.fn=S.fn||[],st=S.slots.freenow;
  while(L.length<th.length)L.push(fnNew());
@@ -722,6 +801,7 @@ function fnStep(){
  var t=fnTotals();
  if(t.n&&t.conf<t.n){var easy=L.filter(function(x){return !x.conf&&!fnRare(x)&&fnNum(x.imp)>0;}).length;if(easy>1)h+='<button class="btn sm yel" data-act="fn-okall">✓ Confirmar los '+easy+' normales con importe</button>';}
  L.forEach(function(x,i){h+=fnCard(x,i,th[i]);});
+ h+=blurBanner('freenow');
  h+='<div class="acts"><label class="btn sm yel"><input type="file" accept="image/*" multiple class="fi" data-slot="freenow">'+I.cam+' '+(th.length?'Añadir más servicios':'Hacer foto o elegir')+'</label>';
  if(st==='none'||!st)h+='<button class="btn sm ghost" data-act="dudosa" data-k="freenow">Hoy no hubo FreeNow</button>';
  h+='<button class="btn sm ghost" data-act="inc-open" data-k="freenow">Reportar incidencia</button></div>';
@@ -833,7 +913,7 @@ function masterPanel(){
  var ex=S.expenses.filter(function(x){return x.estado==='pendiente';});
  if(ex.length){h+='<h2>Gastos por confirmar</h2>';ex.forEach(function(e){h+='<div class="stack">'+exMail(e)+exActions(e)+'</div>';});}
  var rq=S.requests.filter(function(r){return r.estado==='pendiente';});
- if(rq.length){h+='<h2>Peticiones de corrección</h2>';rq.forEach(function(r){var dd=dayById(r.dayId)||{date:(r.key||'').split('|')[1]||TODAY};h+='<div class="stack"><div class="mail"><span class="label">Correo a vecinakentrabajo@gmail.com</span><div><b>'+esc(fn1(uname(r.uid||2)))+' pide corregir el día '+dl(dd.date)+'</b></div><div class="muted">'+esc(r.texto||'Sin motivo escrito.')+'</div></div><div class="row"><button class="btn sm ghost grow" data-act="req-no" data-id="'+r.id+'">Rechazar</button><button class="btn sm ok grow" data-act="req-yes" data-id="'+r.id+'">Autorizar corrección</button></div></div>';});}
+ if(rq.length){h+='<h2>Peticiones de corrección</h2>';rq.forEach(function(r){var dd=dayById(r.dayId)||{date:(r.key||'').split('|')[1]||TODAY};h+='<div class="stack"><div class="mail"><span class="label">Correo a vecinakentrabajo@gmail.com</span><div><b>'+esc(fn1(uname(r.uid||2)))+(r.fest?' pide cobrar el día '+dl(dd.date)+' al 50 % (festivo)':' pide corregir el día '+dl(dd.date))+'</b></div><div class="muted">'+(r.fest?'Si lo aceptas, ese día se liquida al 50 % en vez del 45 %.':esc(r.texto||'Sin motivo escrito.'))+'</div></div><div class="row"><button class="btn sm ghost grow" data-act="req-no" data-id="'+r.id+'">Rechazar</button><button class="btn sm ok grow" data-act="req-yes" data-id="'+r.id+'">'+(r.fest?'Aceptar el 50 %':'Autorizar corrección')+'</button></div></div>';});}
  h+='<h2>Pendiente de confirmar</h2>';
  if(!pend.length)h+='<div class="card"><p class="muted">Nada que aclarar. Todo lo recibido cuadra.</p></div>';
  pend.forEach(function(d){h+='<div class="stack">'+mailHtml(d)+dayRow(d)+'</div>';});
@@ -863,8 +943,8 @@ var DASH_URL='https://drive.google.com/file/d/1xJQHEnmjILE7AFnfbFWp6iQTLv9Y20hC/
 var FAC_TIPOS=['Taller','Gasoil','Seguro','Gestoría','Otro'];
 function masterMas(){
  var sub=S.msub||'mes';
- var h='<h2>Más</h2><div class="chips" role="tablist">'+[['mes','Mes'],['excel','Excel'],['fac','Facturas']].map(function(x){return '<button class="pick" role="tab" data-act="msub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
- return h+({mes:masMes,excel:masExcel,fac:masFac}[sub]||masMes)();
+ var h='<h2>Más</h2><div class="chips" role="tablist">'+[['mes','Mes'],['excel','Excel'],['fac','Facturas'],['cc','Centro']].map(function(x){return '<button class="pick" role="tab" data-act="msub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
+ return h+({mes:masMes,excel:masExcel,fac:masFac,cc:masCC}[sub]||masMes)();
 }
 function ymAdd(ym,n){var a=ym.split('-'),d=new Date(+a[0],+a[1]-1+n,1);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}
 var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -889,10 +969,28 @@ function masMes(){
   var w=m.w[id],isM=(+id===1),saldo=w.parte-w.ef;
   h+='<div class="card stack"><b>'+esc(uname(+id))+'</b><div class="small muted mono">'+w.n+' turnos · facturado '+eur(w.total)+(isM?'':' · su parte '+eur(w.parte)+' · efectivo que lleva '+eur(w.ef))+'</div>'+(isM?'':'<div>'+(saldo>=0?'Le debes ':'Te debe ')+'<b class="mono">'+eur(Math.abs(saldo))+'</b></div>')+'</div>';
  });
- if(!m.n)h+='<div class="card"><p class="muted">Todavía no hay turnos este mes.</p></div>';
+ if(!m.n)h+='<div class="card"><p class="muted">Todavía no hay turnos de la app este mes.</p></div>';
+ var xm=(S.xlMes||{})[ym];
+ if(LIVE&&xm&&xm.conectado){var ks=Object.keys(xm.w);h+='<h3>Según tu Excel</h3>';if(!ks.length)h+='<div class="card"><p class="muted">El Excel de trabajo no tiene días con datos en este mes.</p></div>';ks.sort().forEach(function(id){var w=xm.w[id],sd=w.parte-w.ef;h+='<div class="card stack"><b>'+esc(uname(+id))+'</b><div class="small muted mono">'+w.n+' días · facturado '+eur(w.total)+' · FreeNow '+eur(w.fn)+' · '+Math.round(w.km)+' km'+(+id===1?'':' · su parte '+eur(w.parte)+' · efectivo '+eur(w.ef))+'</div>'+(+id===1?'':'<div>'+(sd>=0?'Le debes ':'Te debe ')+'<b class="mono">'+eur(Math.abs(sd))+'</b></div>')+'</div>';});}
+ else if(LIVE&&xm&&!xm.conectado)h+='<div class="hint">Conecta el Excel en Más › Excel para ver aquí el histórico.</div>';
+ if(LIVE){var fc=(S.fnm||{})[ym];h+='<div class="card stack"><b>Comisión FreeNow del mes (captura de Mortada)</b><p class="small muted">Escribe la comisión total que FreeNow le cobró a Mortada este mes. Tú le devuelves el 50 %.</p><div class="row"><input class="inp" id="fnmIn" type="text" inputmode="decimal" placeholder="0,00" value="'+(fc==null?'':esc(String(fc).replace('.',',')))+'" autocomplete="off" style="flex:1"><button class="btn sm pri" data-act="fnm-save">Guardar</button></div>'+(S.fnmErr?'<span class="small" style="color:var(--bad,#b00020)">'+esc(S.fnmErr)+'</span>':'')+(fc!=null?'<div>Le devuelves <b class="mono">'+eur(r2(fc/2))+'</b> (50 % de '+eur(fc)+')</div>':'')+'</div>';}
  h+='<div class="hint">🟢 Esto es el mes que lleva la app. El histórico completo (otros meses y años) está en el Centro de control, que lee de tu Excel.</div>';
- h+='<a class="btn sm ghost" style="align-self:flex-start" href="'+DASH_URL+'" target="_blank" rel="noopener">Abrir Centro de control (en tu Drive)</a>';
+ h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="msub" data-v="cc">Abrir Centro de control</button>';
  return h;
+}
+function masCC(){
+ var h='<div class="hint">🟢 El Centro de control es tu panel con todo el histórico (lee de tu Excel). Se abre dentro de la app, sin salir.</div>';
+ if(!LIVE)return h+'<div class="card"><p class="muted">Esto funciona en la app real.</p></div>';
+ if(S.ccErr)h+='<div class="banner bad"><span>'+esc(S.ccErr)+'</span></div>';
+ return h+'<button class="btn pri block" data-act="cc-open"'+(S.busy?' disabled':'')+'>'+(S.busy?'Cargando…':'Abrir el Centro de control')+'</button>';
+}
+function ccClose(){var w=document.getElementById('ccwrap');if(w)w.remove();}
+function ccShow(html){
+ ccClose();
+ var w=document.createElement('div');w.id='ccwrap';w.style.cssText='position:fixed;inset:0;z-index:50;background:#fff;display:flex;flex-direction:column';
+ var b=document.createElement('button');b.textContent='← Volver a la app';b.style.cssText='padding:14px 16px;font:700 16px system-ui;background:#FFC700;border:0;text-align:left';b.onclick=ccClose;
+ var f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.style.cssText='flex:1;border:0;width:100%';f.srcdoc=html;
+ w.appendChild(b);w.appendChild(f);document.body.appendChild(w);
 }
 function masExcel(){
  var h='<div class="hint">🟢 El Excel de trabajo es una copia de tu v89 (el 89 no se toca). Cuando aceptas un día, la app lo pasa sola a la fila de ese día. Antes de cada vez hace una copia de seguridad, y nunca escribe encima de una fila que ya tenga datos.</div>';
@@ -909,6 +1007,7 @@ function masExcel(){
  h+='<button class="btn pri block" data-act="xl-run"'+((S.busy||!x.pendientes)?' disabled':'')+'>Pasar al Excel los días aceptados</button>';
  if(S.xlUndoAsk)h+='<div class="banner bad"><b>¿Deshacer el último volcado?</b><span>Las filas vuelven a como estaban antes.</span><div class="row"><button class="btn sm ghost" data-act="xl-cancel">No</button><button class="btn sm bad" data-act="xl-undo">Sí, deshacer</button></div></div>';
  else h+='<div class="row"><button class="btn sm ghost" data-act="xl-undo-ask">Deshacer el último volcado</button><button class="btn sm ghost" data-act="xl-change">Cambiar Excel</button></div>';
+ h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="xl-export"'+(S.busy?' disabled':'')+'>Exportar todo (copia del Excel en Drive)</button>'+(S.xlExp?'<a class="small" href="'+esc(S.xlExp)+'" target="_blank" rel="noopener">Abrir la copia (se abre en otra pestaña)</a>':'');
  h+='</div>';
  if(S.xlHist&&S.xlHist.length){h+='<h3>Historial</h3><div class="card stack">'+S.xlHist.slice(0,15).map(function(i){return '<div class="row small"><span class="mono muted" style="min-width:92px">'+esc(i.t.slice(5,16))+'</span><span class="grow">'+esc(i.key.replace('|',' · '))+'</span><span class="chip '+(i.estado==='VOLCADO'?'ok':(i.estado==='DESHECHO'?'mute':'warn'))+'">'+esc(i.estado.toLowerCase())+'</span></div>';}).join('')+'</div>';}
  return h;
@@ -916,22 +1015,22 @@ function masExcel(){
 function masFac(){
  var h='<div class="hint">🟢 Haz foto a cualquier factura (taller, gasoil, seguro…). La app intenta leer el importe; tú lo compruebas. Se guarda en tu Drive, carpeta FACTURAS, por meses, y desde aquí las mandas todas juntas.</div>';
  if(!LIVE)return h+'<div class="card"><p class="muted">Esto funciona en la app real, no en la demostración.</p></div>';
- var f=S.fac=S.fac||{prov:'',imp:'',fecha:iso(new Date()),tipo:'',thumb:''};
+ var f=S.fac=S.fac||{prov:'',imp:'',fecha:'',tipo:'',thumb:''};
  h+='<div class="card stack">';
  if(f.thumb)h+='<div class="thumbs"><div class="th"><img alt="Factura" src="'+f.thumb+'"><button data-act="fac-rm" aria-label="Quitar la foto">'+I.no+'</button></div></div>';
  h+='<label class="btn sm yel" style="align-self:flex-start"><input type="file" accept="image/*" class="fi" data-slot="factura">'+I.cam+' '+(f.thumb?'Cambiar foto':'Foto de la factura')+'</label>';
  if(S.facBusy)h+='<p class="small muted">Leyendo la factura…</p>';
  h+='<div class="field" style="border-top:0"><label class="nm" for="facProv">Quién la emite</label><input id="facProv" data-fac="prov" type="text" value="'+esc(f.prov)+'" autocomplete="off"></div>';
  h+='<div class="field" style="border-top:0"><label class="nm" for="facImp">Importe</label><input id="facImp" data-fac="imp" type="text" inputmode="decimal" placeholder="0,00" value="'+esc(f.imp)+'" autocomplete="off"></div>';
- h+='<div class="field" style="border-top:0"><label class="nm" for="facFecha">Fecha</label><input id="facFecha" data-fac="fecha" type="date" value="'+esc(f.fecha)+'"></div>';
+ h+='<div class="field" style="border-top:0"><label class="nm" for="facFecha">Fecha de la factura'+(f.fecha?' · '+esc(trimName(trimOf(f.fecha))):'')+'</label><input id="facFecha" data-fac="fecha" type="date" value="'+esc(f.fecha)+'"></div>';
  h+='<div class="chips">'+FAC_TIPOS.map(function(t){return '<button class="pick" data-act="fac-tipo" data-m="'+t+'" aria-pressed="'+(f.tipo===t)+'">'+t+'</button>';}).join('')+'</div>';
  if(S.facErr)h+='<div class="banner '+(/^Enviadas|^No hab/.test(S.facErr)?'ink':'bad')+'"><span>'+esc(S.facErr)+'</span></div>';
  h+='<button class="btn pri block" data-act="fac-send"'+((S.busy||S.facBusy)?' disabled':'')+'>'+(S.busy?'Guardando…':'Guardar factura')+'</button></div>';
- var by={};(S.facs||[]).forEach(function(i){(by[i.mes]=by[i.mes]||[]).push(i);});
+ var by={};(S.facs||[]).forEach(function(i){var q=trimOf(i.fecha);(by[q]=by[q]||[]).push(i);});
  Object.keys(by).sort().reverse().forEach(function(m){
   var l=by[m],tot=0,pen=0;l.forEach(function(i){tot+=i.importe;if(!i.enviada)pen++;});
-  h+='<div class="row sp"><h3 style="margin:0">'+esc(ymName(m))+'</h3><span class="small muted mono">'+l.length+' · '+eur(tot)+'</span></div>';
-  if(pen)h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="fac-mail" data-v="'+m+'"'+(S.busy?' disabled':'')+'>Enviar las '+pen+' pendientes de '+esc(MESES[+m.split('-')[1]-1])+'</button>';
+  h+='<div class="row sp"><h3 style="margin:0">'+esc(trimName(m))+'</h3><span class="small muted mono">'+l.length+' · '+eur(tot)+'</span></div>';
+  if(pen)h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="fac-mail" data-v="'+m+'"'+(S.busy?' disabled':'')+'>Enviar las '+pen+' pendientes de este trimestre</button>';
   h+='<div class="list">'+l.map(function(i){return '<div class="li"><div class="dt"><small>'+dw(i.fecha)+'</small>'+dl(i.fecha)+'</div><div class="grow"><b>'+esc(i.proveedor)+' · <span class="mono">'+eur(i.importe)+'</span></b><div class="small muted">'+esc(i.tipo||'')+(i.enviada?' · enviada':'')+'</div></div>'+(i.url?'<a class="small" href="'+esc(i.url)+'" target="_blank" rel="noopener">Ver</a>':'')+'</div>';}).join('')+'</div>';
  });
  return h;
@@ -942,8 +1041,12 @@ function facParse(text){
  var amts=[];lines.forEach(function(l,ix){var m=l.match(/\d{1,6}[.,]\d{2}(?!\d)/g);if(m)m.forEach(function(a){var v=num(a.replace(/\s/g,''));if(isFinite(v))amts.push({v:v,tot:/total|importe|a pagar|pagar/i.test(l)});});});
  var pick=amts.filter(function(a){return a.tot;}).sort(function(a,b){return b.v-a.v;})[0]||amts.sort(function(a,b){return b.v-a.v;})[0];
  if(pick)out.imp=String(pick.v).replace('.',',');
- var dm=String(text).match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);
- if(dm){var y=+dm[3];if(y<100)y+=2000;if(+dm[2]>=1&&+dm[2]<=12&&+dm[1]>=1&&+dm[1]<=31)out.fecha=y+'-'+('0'+dm[2]).slice(-2)+'-'+('0'+dm[1]).slice(-2);}
+ var T=String(text),dm=T.match(/(\d{4})[\/.\-](\d{1,2})[\/.\-](\d{1,2})/),dd,mm,yy;
+ if(dm){yy=+dm[1];mm=+dm[2];dd=+dm[3];}
+ else{dm=T.match(/(\d{1,2})\s*(?:de\s+)?(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-z]*\.?\s*(?:de\s+)?(\d{2,4})/i);
+  if(dm){dd=+dm[1];mm=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'].indexOf(dm[2].toLowerCase().replace('set','sep'))+1;yy=+dm[3];}
+  else{dm=T.match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})/);if(dm){dd=+dm[1];mm=+dm[2];yy=+dm[3];}}}
+ if(dm){if(yy<100)yy+=2000;if(mm>=1&&mm<=12&&dd>=1&&dd<=31&&yy>=2020&&yy<=2100)out.fecha=yy+'-'+('0'+mm).slice(-2)+'-'+('0'+dd).slice(-2);}
  return out;
 }
 function facRead(file){
@@ -961,17 +1064,23 @@ function facRead(file){
  }).catch(done);
  setTimeout(done,45000);
 }
+function trimOf(f){var a=String(f).split('-');return a[0]+'-T'+Math.ceil(+a[1]/3);}
+function trimName(t){var a=t.split('-T');return a[1]+'.º trimestre de '+a[0];}
 function loadMas(){
  if(!LIVE)return;
  var sub=S.msub||'mes';
  if(sub==='excel'){call('excelEstado',{}).then(function(j){if(j.ok)S.xl=j;return call('listVolcados',{});}).then(function(j){if(j&&j.ok)S.xlHist=j.items;render(true);});}
+ if(sub==='mes'){var ym=S.mmes||(TODAY||iso(new Date())).slice(0,7);call('getFnMes',{mes:ym}).then(function(j){S.fnm=S.fnm||{};if(j.ok)S.fnm[ym]=j.comision;render(true);});call('excelMes',{mes:ym}).then(function(j){S.xlMes=S.xlMes||{};if(j.ok)S.xlMes[ym]=j;render(true);});}
  if(sub==='fac'){call('listInvoices',{}).then(function(j){if(j.ok)S.facs=j.items;render(true);});}
 }
 function masAct(a,d){
  switch(a){
-  case 'msub':S.msub=d.v;S.xlMsg='';render(true);loadMas();return true;
-  case 'mmes':S.mmes=ymAdd(S.mmes||(TODAY||iso(new Date())).slice(0,7),+d.v);render(true);return true;
+  case 'msub':S.msub=d.v;S.xlMsg='';S.ccErr='';render(true);loadMas();return true;
+  case 'cc-open':S.busy=true;S.ccErr='';render(true);call('getDashboard',{}).then(function(j){S.busy=false;if(j.ok&&j.html)ccShow(j.html);else if(!j.authFail)S.ccErr=j.msg||errMsg(j);render(true);});return true;
+  case 'mmes':S.mmes=ymAdd(S.mmes||(TODAY||iso(new Date())).slice(0,7),+d.v);render(true);loadMas();return true;
   case 'xl-change':S.xlChange=true;render(true);return true;
+  case 'xl-export':S.busy=true;S.xlMsg='';render(true);call('exportAll',{}).then(function(j){S.busy=false;if(j.ok){S.xlExp=j.url;S.xlMsg='Copia hecha en Drive (BACKUPS_APP › EXPORTACIONES).';}else if(!j.authFail)S.xlMsg=j.msg||errMsg(j);render(true);});return true;
+  case 'fnm-save':{var fe=$('fnmIn'),ym0=S.mmes||(TODAY||iso(new Date())).slice(0,7),cv=num(fe?fe.value:'');if(!isFinite(cv)){S.fnmErr='Escribe la comisión que sale en la captura de Mortada (por ejemplo 340,43).';render(true);return true;}S.fnmErr='';call('setFnMes',{mes:ym0,comision:cv}).then(function(j){if(j.ok){S.fnm=S.fnm||{};S.fnm[ym0]=j.comision;}else if(!j.authFail)S.fnmErr=j.msg||errMsg(j);render(true);});return true;}
   case 'xl-cancel':S.xlUndoAsk=false;render(true);return true;
   case 'xl-undo-ask':S.xlUndoAsk=true;render(true);return true;
   case 'xl-set':{var el=$('xlLink');if(!el||!el.value.trim())return true;S.busy=true;S.xlMsg='';render(true);
@@ -984,10 +1093,11 @@ function masAct(a,d){
   case 'fac-rm':S.facFile=null;S.fac.thumb='';S.facGen=(S.facGen||0)+1;S.facBusy=false;render(true);return true;
   case 'fac-send':{
    var f=S.fac;if(!S.facFile){S.facErr='Falta la foto de la factura.';render(true);return true;}
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(f.fecha||'')){S.facErr='No he podido leer la fecha: ponla tú (así sé el trimestre).';render(true);return true;}
    var im=num(f.imp);if(!isFinite(im)){S.facErr='Escribe el importe (por ejemplo 123,45).';render(true);return true;}
    S.facErr='';S.busy=true;render(true);
    shrink(S.facFile).then(function(b){return call('submitInvoice',{proveedor:f.prov,importe:im,fecha:f.fecha,tipo:f.tipo,photos:[{slot:'factura',mime:'image/jpeg',b64:b}]});}).then(function(j){
-    S.busy=false;if(j.ok){S.facFile=null;S.fac={prov:'',imp:'',fecha:iso(new Date()),tipo:'',thumb:''};loadMas();}else if(!j.authFail)S.facErr=j.msg||errMsg(j);render(true);
+    S.busy=false;if(j.ok){S.facFile=null;S.fac={prov:'',imp:'',fecha:'',tipo:'',thumb:''};loadMas();}else if(!j.authFail)S.facErr=j.msg||errMsg(j);render(true);
    },function(){S.busy=false;S.facErr=PHOTO_ERR;render(true);});return true;}
   case 'fac-mail':S.busy=true;render(true);
    call('sendInvoices',{mes:d.v}).then(function(j){S.busy=false;S.facErr='';if(j.ok)S.facErr=j.n?('Enviadas '+j.n+' facturas a '+j.a+'.'+(j.aparte?' Quedan '+j.aparte+' para otro envío (pesaban demasiado).':'')):'No había pendientes.';else if(!j.authFail)S.facErr=j.msg||errMsg(j);loadMas();render(true);});return true;
@@ -1002,6 +1112,7 @@ function masterDetail(){
  if(d.hist&&d.hist.length)h+='<div class="hint">Día corregido tras tu autorización. La versión anterior queda guardada ('+d.hist.length+').</div>';
  h+=receipt(d.res);
  h+='<div class="card kv"><div><span class="label">Total</span><b class="mono">'+eur(num(d.f.total))+'</b></div><div><span class="label">Parte '+esc(fn1(uname(d.driver)))+'</span><b class="mono">'+eur(d.res.parte)+'</b></div><div><span class="label">Efectivo</span><b class="mono">'+eur(num(d.f.efectivo))+'</b></div><div><span class="label">Cobras</span><b class="mono">'+eur(d.res.cobras)+'</b></div></div>';
+ if(d.motivoAcep)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
  if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Incidencias con fotos</span>'+d.incid.map(function(x){return '<p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>';}).join('')+'</div>';
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
@@ -1009,6 +1120,7 @@ function masterDetail(){
  if(LIVE&&d.carpeta)h+='<a class="btn sm ghost" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Ver fotos en Drive</a>';
  if(!d.accepted){
   var green=d.estado==='VERDE';
+  if(!green)h+='<div class="card stack"><span class="label">Por qué lo aceptas (obligatorio)</span><input class="inp" id="accMot" type="text" maxlength="200" placeholder="Una línea: p. ej. revisado con la foto, cuadra" value="'+esc(S.accMot||'')+'" autocomplete="off">'+(S.accErr?'<span class="small" style="color:var(--bad,#b00020)">'+esc(S.accErr)+'</span>':'')+'</div>';
   h+='<button class="btn '+(green?'ok':'pri')+' block" data-act="accept" data-id="'+d.id+'">'+(green?'Aceptar día':'Aclarado: aceptar día')+'</button>';
   h+='<div class="card stack"><h3>Marcar servicio con problema</h3><div class="chips">'+MOTIVOS.map(function(m){return '<button class="pick" data-act="flag" data-id="'+d.id+'" data-m="'+esc(m)+'">'+m+'</button>';}).join('')+'</div></div>';
  }
@@ -1084,7 +1196,9 @@ function thinkHtml(msg,skip){
  var bt=skip?'<span class="wslow"><span>Tarda más de lo normal, pero sigue en marcha.</span><span class="row">'+skip+'</span></span>':'';
  return '<div class="think" role="status" aria-live="polite"><svg viewBox="0 0 84 40" aria-hidden="true"><line class="rd" x1="0" y1="37" x2="84" y2="37" stroke="currentColor" stroke-width="2" stroke-dasharray="8 8" opacity=".5"/><g class="tj"><rect x="14" y="16" width="50" height="14" rx="4" style="fill:var(--taxi);stroke:var(--taxi-ink)" stroke-width="2"/><path d="M23 16l6-9h22l7 9z" style="fill:var(--taxi);stroke:var(--taxi-ink)" stroke-width="2" stroke-linejoin="round"/><rect x="33" y="2" width="12" height="4" rx="1" style="fill:var(--taxi-ink)"/><path d="M31 15l4-6h6v6zM44 15v-6h6l3 6z" style="fill:var(--taxi-ink)" opacity=".75"/><circle class="wl" cx="26" cy="31" r="5.5" style="fill:var(--taxi-ink)"/><circle class="wl" cx="53" cy="31" r="5.5" style="fill:var(--taxi-ink)"/><circle cx="26" cy="31" r="1.8" style="fill:var(--taxi)"/><circle cx="53" cy="31" r="1.8" style="fill:var(--taxi)"/></g></svg><span class="wst"><span>'+msg+'</span>'+bt+'</span></div>';
 }
-function render(keep){renderBar();renderHero();renderMain();renderTabs();if(!keep)window.scrollTo(0,0);saveDraftSoon();}
+function savePos(){if(!(LIVE&&S.role==='master'&&S.view==='master'))return;try{localStorage.setItem('turnos_pos',JSON.stringify({t:S.mtab,s:S.msub||'mes',m:S.mmes||'',d:S.dfilter==null?null:S.dfilter}));}catch(e){}}
+function restorePos(){try{var q=JSON.parse(localStorage.getItem('turnos_pos')||'null');if(q&&['panel','dias','gastos','prob','users','mas'].indexOf(q.t)>=0){S.mtab=q.t;S.msub=q.s||'mes';if(q.m)S.mmes=q.m;if(q.d!=null)S.dfilter=q.d;}}catch(e){}}
+function render(keep){renderBar();renderHero();renderMain();renderTabs();if(!keep)window.scrollTo(0,0);saveDraftSoon();savePos();}
 
 /* ---------- lectura de fotos en el móvil (ticket y TPV) ---------- */
 var LECTOR=(function(){var root={};
@@ -1234,7 +1348,7 @@ function ocrReadFile(kind,file){
   wk=a[0];bm=a[1];w0=bm.width||bm.naturalWidth;h0=bm.height||bm.naturalHeight;
   if(kind==='tpv'){
    var tw=Math.min(w0,1400),th=Math.round(h0*tw/w0);
-   return ocrRec(wk,ocrCanvas(ocrGray(bm,0,0,w0,h0,tw,th),tw,th),6).then(function(d){var r=LECTOR.readTPV([d.text]);r.loc=ocrLoc('tpv',r,d,tw/w0,0,w0,h0);r.ar=h0/w0;return r;});
+   return ocrRec(wk,ocrCanvas(ocrGray(bm,0,0,w0,h0,tw,th),tw,th),6).then(function(d){var r=LECTOR.readTPV([d.text]);r.loc=ocrLoc('tpv',r,d,tw/w0,0,w0,h0);r.fecha=tpvDate(d.text);r.ar=h0/w0;return r;});
   }
   var sc=Math.min(2.5,2600/Math.max(w0,h0)),aw=Math.round(w0*sc),ah=Math.round(h0*sc);
   var pa=LECTOR.prep(ocrGray(bm,0,0,w0,h0,aw,ah),aw,ah,25);
@@ -1248,14 +1362,32 @@ function ocrReadFile(kind,file){
 }
 window.__ocrReadFile=ocrReadFile;if(window.TURNOS_TEST)window.__t={S:function(){return S;},act:function(a,d){act(a,d||{});},render:render,offer:function(){S._draftChecked=false;offerDraft();}};
 function ocrEmpty(v){return v==null||v===''||(typeof v==='number'&&!isFinite(v));}
+function tpvDate(t){var m=String(t||'').match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2}|\d{2})(?!\d)/);if(!m)return null;var y=+m[3];if(y<100)y+=2000;var d=+m[1],mo=+m[2];if(mo<1||mo>12||d<1||d>31)return null;return y+'-'+('0'+mo).slice(-2)+'-'+('0'+d).slice(-2);}
+window.__tpvDate=tpvDate;
 function ocrApply(r,meta){
  S.ocr=S.ocr||{};
+ if(meta&&meta.slot==='tpv'){S.tpvParts=S.tpvParts||{};if(r.f&&r.f.tpv!=null)S.tpvParts[meta.idx]=r.f.tpv;if(r.fecha)S.tpvDate=r.fecha;var ks=Object.keys(S.tpvParts);if(ks.length>1&&!(S.ocr.tpv&&S.ocr.tpv.typed)){var sm=0;ks.forEach(function(q){sm+=S.tpvParts[q];});S.form.tpv=Math.round(sm*100)/100;S.ocr.tpv={ok:true,slot:'tpv',idx:0,ar:r.ar||1.5,sum:ks.length};return;}}
  if(r&&r.fecha&&meta&&meta.slot==='taximetro')S.ticketDate=r.fecha;
  for(var k in r.f){
   var okk=!!(r.q&&r.q[k]&&r.q[k].ok),prev=S.ocr[k];
   if(ocrEmpty(S.form[k])||(prev&&!prev.ok&&!prev.conf&&okk)){S.form[k]=r.f[k];S.ocr[k]={ok:okk,slot:meta&&meta.slot,idx:meta?meta.idx:0,box:(r.loc&&r.loc[k])||null,ar:r.ar||1.5};}
  }
 }
+function blurScore(file){
+ return ocrBitmap(file).then(function(bm){
+  var w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,tw=Math.min(500,w0),th=Math.round(h0*tw/w0);
+  var g=ocrGray(bm,0,0,w0,h0,tw,th),sum=0,sq=0,n=0,x,y,v;
+  for(y=1;y<th-1;y++)for(x=1;x<tw-1;x++){v=4*g[y*tw+x]-g[y*tw+x-1]-g[y*tw+x+1]-g[(y-1)*tw+x]-g[(y+1)*tw+x];sum+=v;sq+=v*v;n++;}
+  var m=sum/n;return sq/n-m*m;
+ });
+}
+var BLUR_MIN=60;
+window.__blurScore=blurScore;
+function blurCheck(k,files){
+ if(!window.Promise||(window.TURNOS_NO_OCR&&!window.TURNOS_BLUR))return;
+ files.forEach(function(f){blurScore(f).then(function(sc){if(sc<BLUR_MIN){f.__blur=true;render(true);}}).catch(function(){});});
+}
+function blurBanner(k){var n=(S.files[k]||[]).filter(function(f){return f&&f.__blur;}).length;return n?'<div class="banner bad"><b>'+(n>1?n+' fotos parecen borrosas':'Una foto parece borrosa')+'</b><span>Repítela con más luz y sin mover el móvil para que se lea bien.</span></div>':'';}
 function ocrRefresh(){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'))return;render(true);}
 function ocrScan(k,files){
  if(!LIVE||window.TURNOS_NO_OCR||!window.Promise||!files.length)return;
@@ -1418,7 +1550,7 @@ function act(a,d){
   case 'sound':S.sound=!S.sound;if(S.sound)beep(1);render(true);return;
   case 'rm':
    if(d.k==='gasto'){S.exThumbs.splice(+d.i,1);S.exFiles.splice(+d.i,1);}
-   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(S.files[d.k])S.files[d.k].splice(+d.i,1);if(d.k==='freenow'&&S.fn){S.fn.splice(+d.i,1);fnSync();}if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
+   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(S.files[d.k])S.files[d.k].splice(+d.i,1);if(d.k==='freenow'&&S.fn){S.fn.splice(+d.i,1);fnSync();}if(d.k==='tpv'){var np={};Object.keys(S.tpvParts||{}).forEach(function(q){q=+q;if(q<+d.i)np[q]=S.tpvParts[q];else if(q>+d.i)np[q-1]=S.tpvParts[q];});S.tpvParts=np;var kq=Object.keys(np);if(kq.length>1){var sm2=0;kq.forEach(function(q){sm2+=np[q];});S.form.tpv=Math.round(sm2*100)/100;}}if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
    render(true);return;
   case 'inc-open':S.slotInc[d.k]=S.slotInc[d.k]||{};S.slotInc[d.k].open=true;render(true);return;
   case 'inc-cancel':S.slotInc[d.k]={open:false,text:(S.slotInc[d.k]||{}).text};render(true);return;
@@ -1446,13 +1578,14 @@ function act(a,d){
    uById(+(d.id||2)).device=null;uById(+(d.id||2)).code=cc()+'-'+cc();S.reg='code';S.regErr='';log('Iván desvinculó el móvil de Mortada');render(true);return;
   case 'quitar':
    S.caps=Math.max(0,S.caps-1);if(S.thumbs.servicios)S.thumbs.servicios.pop();if(S.caps===0)S.slots.servicios='none';render(true);return;
+  case 'fest-send':S.requests.push({id:S.nextR++,uid:2,dayId:+d.id,texto:'',estado:'pendiente',fest:true});log('Mortada pidió el 50 % por festivo el día '+dl(dayById(+d.id).date));render(true);return;
   case 'req-open':S.reqOpen=+d.id;render(true);return;
   case 'cancel-req':S.reqOpen=null;render(true);return;
   case 'req-send':
    var tx=$('reqTxt');S.requests.push({id:S.nextR++,uid:2,dayId:+d.id,texto:tx?tx.value.trim():'',estado:'pendiente'});
    log('Mortada pidió corregir el día '+dl(dayById(+d.id).date));S.reqOpen=null;render(true);return;
   case 'req-yes':case 'req-no':
-   S.requests.forEach(function(r){if(r.id===+d.id){r.estado=a==='req-yes'?'aprobada':'rechazada';log('Iván '+(a==='req-yes'?'autorizó':'rechazó')+' corregir el día '+dl(dayById(r.dayId).date));}});
+   S.requests.forEach(function(r){if(r.id===+d.id){r.estado=a==='req-yes'?'aprobada':'rechazada';if(r.fest&&a==='req-yes'){var fd=dayById(r.dayId);if(fd){fd.pct=50;fd.res=verify(fd.f,fd.caps,50,fd.pend,false);}}log('Iván '+(a==='req-yes'?'autorizó':'rechazó')+' corregir el día '+dl(dayById(r.dayId).date));}});
    render(true);return;
   case 'edit':
    var ed=dayById(+d.id);resetForm();for(var q in ed.f)S.form[q]=ed.f[q];
@@ -1461,9 +1594,12 @@ function act(a,d){
   case 'edit-cancel':S.editing=null;resetForm();S.dtab='days';render();return;
   case 'open':S.openDay=+d.id;render();return;
   case 'close':S.openDay=null;render();return;
-  case 'accept':
-   S.days.forEach(function(x){if(x.id===+d.id){x.accepted=true;log('Iván aceptó el día '+dl(x.date));}});
-   S.openDay=null;render();return;
+  case 'accept':{
+   var ad=dayById(+d.id),am=$('accMot');
+   if(ad&&ad.estado!=='VERDE'&&!(am&&am.value.trim())){S.accErr='Escribe en una línea por qué aceptas este día.';render(true);return;}
+   S.accErr='';S.accMot='';
+   S.days.forEach(function(x){if(x.id===+d.id){x.accepted=true;if(am)x.motivoAcep=am.value.trim();log('Iván aceptó el día '+dl(x.date));}});
+   S.openDay=null;render();return;}
   case 'flag':
    var dd=S.days.filter(function(x){return x.id===+d.id;})[0];
    S.problems.unshift({id:S.nextP++,date:dd.date,motivo:d.m,texto:'Marcado por Iván desde el día '+dl(dd.date)+'.',open:true});
@@ -1557,12 +1693,13 @@ function dayId(d){return (+d.uid)*100000+Math.round(Date.parse(d.fecha+'T12:00:0
 function mapDay(d){
  var dt=d.datos||{},f=dt.form||{},caps=+dt.caps||0,pend=dt.pend||[],pct=(d.uid===1)?0:(d.pct||45);
  var res=verify(f,caps,pct,pend,d.uid===1);
- return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||''};
+ return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||''};
 }
 function mapReq(r){
  var day=S.days.filter(function(x){return x.key===r.clave;})[0],st=String(r.estado||'').toUpperCase(),e;
- if(st==='PENDIENTE')e='pendiente';else if(st==='RECHAZADA')e='rechazada';else e=(day&&day.correccion==='AUTORIZADA')?'aprobada':'hecha';
- return {id:+r.id,uid:+r.uid||(S.me&&S.me.id)||0,dayId:day?day.id:0,key:r.clave,texto:r.motivo||'',estado:e};
+ var fest=(r.motivo==='FESTIVO_50');
+ if(st==='PENDIENTE')e='pendiente';else if(st==='RECHAZADA')e='rechazada';else e=fest?'aprobada':((day&&day.correccion==='AUTORIZADA')?'aprobada':'hecha');
+ return {id:+r.id,uid:+r.uid||(S.me&&S.me.id)||0,dayId:day?day.id:0,key:r.clave,texto:fest?'':(r.motivo||''),estado:e,fest:fest};
 }
 function mapExp(e){return {id:e.id,uid:e.uid,date:e.fecha,tipo:e.tipo,importe:e.importe,texto:e.texto,fotos:null,estado:String(e.estado||'').toLowerCase(),carpeta:e.carpeta};}
 function mapUser(u){
@@ -1586,6 +1723,8 @@ function mapLog(l){
 }
 function applySnap(j){
  TODAY=iso(new Date());
+ if(j.role!=='master'&&!S._cmpDone&&LIVE){S._cmpDone=true;setTimeout(function(){call('miComparativa',{}).then(function(c){if(c.ok){S.cmp=c;render(true);}});},0);}
+ if(j.role==='master'&&!S._posDone){S._posDone=true;restorePos();if(S.mtab==='mas')setTimeout(loadMas,0);}
  S.role=j.role;S.view=(j.role==='master'&&!S.mine)?'master':'driver';
  S.me={id:j.me.id,name:j.me.nombre,pct:(j.role==='master'?0:(j.me.pct||45)),status:j.me.estado||'ACTIVO'};
  S.days=(j.days||[]).filter(function(d){return d.key;}).map(mapDay).sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:a.driver-b.driver);});
@@ -1718,10 +1857,13 @@ function liveAct(a,d){
   case 'logout':
    call('logout',{}).then(function(){clearTok();liveReset();render();});
    return true;
-  case 'accept':dd=dayById(id);if(dd)doLive('acceptDay',{key:dd.key},function(){S.openDay=null;});return true;
+  case 'accept':{dd=dayById(id);if(!dd)return true;var am2=$('accMot'),mv=am2?am2.value.trim():'';
+   if(dd.estado!=='VERDE'&&!mv){S.accErr='Escribe en una línea por qué aceptas este día.';render(true);return true;}
+   S.accErr='';S.accMot='';doLive('acceptDay',{key:dd.key,motivo:mv},function(){S.openDay=null;});return true;}
   case 'flag':dd=dayById(id);if(dd)doLive('addProblem',{key:dd.key,tipo:d.m,texto:'Marcado por Iván desde el día '+dl(dd.date)+'.'},function(){S.mtab='prob';S.openDay=null;});return true;
   case 'resolve':doLive('resolveProblem',{id:id});return true;
   case 'ex-yes':case 'ex-no':case 'ex-paid':doLive('decideExpense',{id:id,decision:a==='ex-yes'?'yes':(a==='ex-no'?'no':'paid')});return true;
+  case 'fest-send':dd=dayById(id);if(dd)doLive('requestHoliday',{key:dd.key});return true;
   case 'req-yes':case 'req-no':doLive('decideRequest',{id:id,decision:a==='req-yes'?'yes':'no'});return true;
   case 'req-send':{
    dd=dayById(id);var tx=$('reqTxt');if(!dd)return true;
@@ -1762,6 +1904,7 @@ document.addEventListener('input',function(e){
  if(!t.dataset)return;
  if(t.dataset.f){S.form[t.dataset.f]=t.value;if(S.ocr){var oo=S.ocr[t.dataset.f]||(S.ocr[t.dataset.f]={});oo.conf=true;oo.typed=true;oo.ok=true;}var l=$('live');if(l)l.innerHTML=liveHtml();}
  if(t.dataset.fn!==undefined&&S.fn&&S.fn[+t.dataset.fn]){var sv=S.fn[+t.dataset.fn];sv[t.dataset.fk]=t.value;sv.conf=false;fnSync();var fs=$('fnsum');if(fs)fs.innerHTML=fnSumHtml();}
+ if(t.id==='accMot')S.accMot=t.value;
  if(t.dataset.x)S.ex[t.dataset.x]=t.value;
  if(t.dataset.fac&&S.fac)S.fac[t.dataset.fac]=t.value;
  if(t.dataset.c){S.coche.texto=t.value;var b=$('closeBtn');if(b)b.textContent=(S.coche.chips.length||t.value.trim())?'Añadir y cerrar turno':'Saltar y cerrar turno';}
@@ -1775,7 +1918,7 @@ document.addEventListener('change',function(e){
  if(t.dataset&&t.dataset.f&&S.screen==='up'&&inlKeys('tpv').concat(inlKeys('taximetro')).indexOf(t.dataset.f)>=0){render(true);return;}
  if(t.dataset&&t.dataset.slot==='factura'&&t.files&&t.files.length){
   var ff=t.files[0],uu='';try{uu=URL.createObjectURL(ff);}catch(x){}
-  S.facFile=ff;S.fac=S.fac||{prov:'',imp:'',fecha:iso(new Date()),tipo:'',thumb:''};S.fac.thumb=uu;try{t.value='';}catch(x){}
+  S.facFile=ff;S.fac=S.fac||{prov:'',imp:'',fecha:'',tipo:'',thumb:''};S.fac.thumb=uu;try{t.value='';}catch(x){}
   render(true);facRead(ff);return;
  }
  if(t&&t.dataset&&t.dataset.slot&&t.files&&t.files.length){
@@ -1787,9 +1930,10 @@ document.addEventListener('change',function(e){
    if(cur.length>=cap)return;
    var u='';try{u=URL.createObjectURL(f);}catch(x){}
    if(!u)return;
+   if(k==='freenow'&&!newF.length)newF.start=(S.fn||[]).length;
    cur.push(u);fl.push(f);newF.push(f);added++;if(k==='servicios')S.caps++;if(k==='freenow'){S.fn=S.fn||[];S.fn.push(fnNew());}
   });
-  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);if(k==='taximetro'||k==='tpv')ocrScan(k,newF);}
+  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);if(k==='taximetro'||k==='tpv')ocrScan(k,newF);if(k==='freenow')fnScan(newF.start,newF);blurCheck(k,newF);}
   if(added)beep(1);
   try{t.value='';}catch(x){}
   render(true);
