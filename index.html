@@ -985,28 +985,30 @@ function fnParse(t){
 }
 function fnReadFile(file){
  return Promise.all([ocrWorker(),ocrBitmap(file)]).then(function(a){
-  var wk=a[0],bm=a[1],w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,tw=Math.min(1200,Math.max(w0,900)),th=Math.round(h0*tw/w0);
-  var g=ocrGray(bm,0,0,w0,h0,tw,th),i;
-  function fnDark(a,w,h){var sm=0,n=0,x0=Math.floor(w*.3),x1=Math.floor(w*.7),x,y;for(y=0;y<h;y+=3)for(x=x0;x<x1;x+=3){sm+=a[y*w+x];n++;}return n>0&&sm/n<120;} /* solo la banda central: los márgenes negros de la captura no cuentan */
-  var oscuro=fnDark(g,tw,th);
-  if(oscuro){for(i=0;i<g.length;i++)g[i]=255-g[i];}
-  g=LECTOR.prep(g,tw,th,40).norm; /* primera pasada ya con contraste local: el texto gris claro («Pago vía app», «Comisión») no se lee sin esto */
+  var wk=a[0],bm=a[1],w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight;
+  function fnDark(g,w,h){var sm=0,n=0,x0=Math.floor(w*.3),x1=Math.floor(w*.7),x,y;for(y=0;y<h;y+=3)for(x=x0;x<x1;x+=3){sm+=g[y*w+x];n++;}return n>0&&sm/n<120;} /* solo la banda central: los márgenes negros de la captura no cuentan */
+  function fnBg(g,w,h){var hist=new Array(256).fill(0),x0=Math.floor(w*.3),x1=Math.floor(w*.7),x,y,n=0,i,c=0;for(y=0;y<h;y+=2)for(x=x0;x<x1;x+=2){hist[g[y*w+x]|0]++;n++;}for(i=255;i>=0;i--){c+=hist[i];if(c>=n*.35)return i;}return 240;}
   function fr(q,w,h){return {x0:q.x0/w,x1:q.x1/w,y0:q.y0/h,y1:q.y1/h};}
   function lineBox(d,re,w,h){var ls=(d.lines||[]).filter(function(l){return re.test(l.text||'');});if(!ls.length)return null;var l=ls[0],ws=(l.words||[]).filter(function(x){return !/\d/.test(x.text||'')&&x.bbox;}),u;
    if(ws.length){u={x0:1e9,y0:1e9,x1:0,y1:0};ws.forEach(function(x){u.x0=Math.min(u.x0,x.bbox.x0);u.y0=Math.min(u.y0,x.bbox.y0);u.x1=Math.max(u.x1,x.bbox.x1);u.y1=Math.max(u.y1,x.bbox.y1);});}else u=l.bbox;
    return u?fr(u,w,h):null;}
   function fnLoc(r,d,w,h){r.ar=h0/w0;if(r.imp==null)return;var b=oFindNum(d.words,r.imp),loc={};if(b)loc.imp=fr(b,w,h);
    var m=r.pago==='app'?lineBox(d,/pago\s*v\S{0,3}\s*a\S{1,3}/i,w,h):lineBox(d,/efectivo|tarjeta|dat.fono/i,w,h);if(m)loc.met=m;
-   if(r.cerrado){var f=lineBox(d,/precio\s*(cerrado|fijo)/i,w,h);if(f)loc.fijo=f;}
+   if(r.cerrado){var f=lineBox(d,/precio\s*(?:cerrado|fijo)/i,w,h);if(f)loc.fijo=f;}
    if(loc.imp||loc.met||loc.fijo)r.loc=loc;}
-  return ocrRec(wk,ocrCanvas(g,tw,th),6).then(function(d){var r=fnParse(d.text);fnLoc(r,d,tw,th);if(window.TURNOS_TEST)r.txt=d.text;if(r.imp!=null&&r.q==='ok')return r;
-   /* segunda pasada: más contraste local y otra segmentación */
-   var tw2=Math.min(1500,Math.max(w0,1100)),th2=Math.round(h0*tw2/w0),g2=ocrGray(bm,0,0,w0,h0,tw2,th2),j;
-   if(fnDark(g2,tw2,th2))for(j=0;j<g2.length;j++)g2[j]=255-g2[j];
-   return ocrRec(wk,ocrCanvas(g2,tw2,th2),4).then(function(d2){var r2=fnParse(d2.text);fnLoc(r2,d2,tw2,th2);
-    if(r2.imp!=null&&(r.imp==null||(r2.q==='ok'&&r.q!=='ok'))){if(r.prop!=null&&r2.prop==null)r2.prop=r.prop;return r2;}
-    if(r.imp==null&&r2.prop!=null&&r.prop==null)r.prop=r2.prop;
-    return r;});});
+  /* tres pasadas: 1) tal cual, 2) con el gris claro ennegrecido (el texto gris de «Pago vía app»/«Comisión» no se lee si no), 3) contraste local */
+  function pase(n){
+   var tw=Math.min(n===3?1500:1200,Math.max(w0,n===3?1100:900)),th=Math.round(h0*tw/w0),g=ocrGray(bm,0,0,w0,h0,tw,th),i;
+   if(fnDark(g,tw,th)){for(i=0;i<g.length;i++)g[i]=255-g[i];}
+   if(n===2){var bg=fnBg(g,tw,th),lo=bg*0.68,hi=bg*0.94,k=255/Math.max(20,hi-lo);for(i=0;i<g.length;i++){var v=(g[i]-lo)*k;g[i]=v<0?0:(v>255?255:v);}}
+   if(n===3)g=LECTOR.prep(g,tw,th,40).norm;
+   return ocrRec(wk,ocrCanvas(g,tw,th),n===3?4:6).then(function(d){var r=fnParse(d.text);fnLoc(r,d,tw,th);if(window.TURNOS_TEST)r.txt=d.text;return r;});
+  }
+  return pase(1).then(function(r1){if(r1.imp!=null&&r1.q==='ok')return r1;
+   return pase(2).then(function(r2){var best=r1;
+    function mejor(x){if(x.imp!=null&&(best.imp==null||(x.q==='ok'&&best.q!=='ok')))best=x;else if(best.imp==null&&x.prop!=null&&best.prop==null)best.prop=x.prop;}
+    mejor(r2);if(best.imp!=null&&best.q==='ok')return best;
+    return pase(3).then(function(r3){mejor(r3);if(r1!==best&&r1.prop!=null&&best.prop==null)best.prop=r1.prop;return best;});});});
  });
 }
 window.__fnReadFile=fnReadFile;window.__fnParse=fnParse;
@@ -1019,8 +1021,8 @@ function fnScan(start,files){
    if(gen!==S.gen||!r)return;card.reading=false;
    card.cands=r.cands||[];
    if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
-   if(r.cerrado){card.cerrado=true;card.taxi=false;}else if(r.imp!=null&&!r.directo){card.taxi=true;card.cerrado=false;card.auto=true;}
-   if(r.directo){card.directo=true;card.metodo='efectivo';}
+   if(r.cerrado){card.cerrado=true;card.taxi=false;}else if(r.imp!=null){card.taxi=true;card.cerrado=false;card.auto=true;}
+   if(r.directo)card.metodo='efectivo'; /* «Pago efectivo/tarjeta» = servicio cobrado en efectivo: suma como cualquier servicio (taxEfe si es de taxímetro), según el Excel */
    if(r.imp==null&&String(card.imp)==='')card.noleido=true;
    fnSync();
   },function(){card.reading=false;}).then(function(){card.reading=false;S.ocrBusy=Math.max(0,(S.ocrBusy||1)-1);ocrRefresh();});
@@ -1052,7 +1054,7 @@ function fnSumHtml(){
 var FNLOGO='<span class="fnlogo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 6l8 12 8-12" fill="none" stroke="#e3212b" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 function fnTag(x){var a=fnNum(x.imp);if(!(a>0))return '';return '<div class="mono" style="font-weight:700">'+eur(a)+' · '+(x.directo?'cobro directo':(x.metodo==='app'?'App':'Efectivo / datáfono'))+(x.directo?'':(x.cerrado?' (precio fijo)':' (taxímetro)'))+'</div>';}
 function fnPills(x){var a=fnNum(x.imp);if(!(a>0))return '';
- return '<div class="fnyel"><span class="fy">'+eur(a)+'</span><span class="fy">'+(x.directo?'Cobro directo '+(x.pago==='tarjeta'?'tarjeta':'efectivo'):(x.metodo==='app'?'Pago vía app':'Efectivo / datáfono'))+'</span>'+(x.cerrado?'<span class="fy">Precio fijo</span>':'')+'</div>';}
+ return '<div class="fnyel"><span class="fy">'+eur(a)+'</span><span class="fy">'+(x.metodo==='app'?'Pago vía app':'Cobrado en efectivo')+'</span>'+(x.cerrado?'<span class="fy">Precio fijo</span>':'')+'</div>';}
 function fnCard(x,i,u){
  var rare=fnRare(x),cls='fnc'+(x.conf?' done':(rare?' rare':''));
  function pk(act,k,v,txt,on){return '<button class="pick" data-act="'+act+'" data-i="'+i+'" data-fk="'+k+'" data-v="'+v+'" aria-pressed="'+(on?'true':'false')+'">'+txt+'</button>';}
@@ -2185,7 +2187,7 @@ function chkRender(){
  +'<div class="chk-ask"><div class="q">'+(c.edit?'Escribe el número correcto de <b>':'¿Es este el número? <b>')+esc(lab)+'</b></div>'
  +(c.edit?'<input id="chkInp" type="text" inputmode="'+(it.k==='horaIni'||it.k==='horaFin'?'numeric':'decimal')+'" autocomplete="off" value="'+esc(fx?String(fx.imp).replace('.',','):(S.form[it.k]==null?'':String(S.form[it.k]).replace('.',',')))+'">'
         +'<div class="row"><button data-act="chk-cancel-edit">Atrás</button><button class="yes" data-act="chk-save">Guardar y seguir</button></div>'
-       :'<div class="val">'+esc(fx?(num(fx.imp)>0?eur(num(fx.imp)):'—'):chkVal(it.k))+'</div>'+(fx?'<div class="fnyel"><span class="fy">'+(fx.directo?'Cobro directo '+(fx.pago==='tarjeta'?'tarjeta':'efectivo'):(fx.metodo==='app'?'Pago vía app':'Efectivo / datáfono'))+'</span>'+(fx.cerrado?'<span class="fy">Precio fijo</span>':'')+'</div><div class="row"><button data-act="chkfn-m" data-v="'+(fx.metodo==='app'?'efectivo':'app')+'">Cambiar a '+(fx.metodo==='app'?'efectivo':'app')+'</button><button data-act="chkfn-f">'+(fx.cerrado?'No es precio fijo':'Es precio fijo')+'</button></div>':'')+(b?'':'<div class="hint2">No he podido señalarlo en la foto: muévela y búscalo.</div>')
+       :'<div class="val">'+esc(fx?(num(fx.imp)>0?eur(num(fx.imp)):'—'):chkVal(it.k))+'</div>'+(fx?'<div class="fnyel"><span class="fy">'+(fx.metodo==='app'?'Pago vía app':'Cobrado en efectivo')+'</span>'+(fx.cerrado?'<span class="fy">Precio fijo</span>':'')+'</div><div class="row"><button data-act="chkfn-m" data-v="'+(fx.metodo==='app'?'efectivo':'app')+'">Cambiar a '+(fx.metodo==='app'?'efectivo':'app')+'</button><button data-act="chkfn-f">'+(fx.cerrado?'No es precio fijo':'Es precio fijo')+'</button></div>':'')+(b?'':'<div class="hint2">No he podido señalarlo en la foto: muévela y búscalo.</div>')
         +'<div class="row"><button data-act="chk-no">No, lo corrijo</button><button class="yes" data-act="chk-yes">Sí, es este</button></div>')
  +'</div>';
  var img=$('chkImg'),view=$('chkView');
