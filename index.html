@@ -282,6 +282,8 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 .calsum div{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px}
 .calsum b{font-family:var(--f-mono);font-size:16px}
 .calsum span{font-size:11px;color:var(--ink2)}
+.gain{background:var(--ok);color:#fff;border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.gain .big{font-family:var(--f-display);font-weight:700;font-size:60px;line-height:.95;font-variant-numeric:tabular-nums}
 </style>
 
 <div class="bar"><div class="col pad">
@@ -303,7 +305,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='v91';
+var APP_V='v92';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -431,6 +433,7 @@ var I={
  ok:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3.2L13 4.8"/></svg>',
  no:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>',
  dash:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 8h8"/></svg>',
+ chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',
  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></svg>',
  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>',
@@ -509,10 +512,16 @@ function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
 }
+function loginView(){
+ var u='',rem=true;try{u=localStorage.getItem('turnos_user')||'';rem=localStorage.getItem('turnos_rem')!=='0';}catch(e){}
+ if(S.loginUser!=null)u=S.loginUser;if(S.loginRem!=null)rem=S.loginRem;
+ return '<form class="card stack" onsubmit="return false"><span class="label">Taxi 4200</span><h2>Entrar</h2><input class="inp" id="lgUser" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" placeholder="Usuario" aria-label="Usuario" value="'+esc(u)+'"><input class="inp" id="lgPass" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña"><label class="row" style="min-height:44px"><input type="checkbox" id="lgRem"'+(rem?' checked':'')+' style="width:22px;height:22px"> <span>Recordarme en este móvil</span></label>'+(S.regErr?'<div class="banner bad"><span>'+esc(S.regErr)+'</span></div>':'')+'<button type="button" class="btn yel block" data-act="login"'+(S.busy?' disabled':'')+'>'+(S.busy?'Comprobando…':'Acceder')+'</button></form><button class="btn sm ghost" style="align-self:center" data-act="code-open">Primera vez: tengo un código de alta</button>';
+}
 function regView(){
+ if(LIVE&&S.regMode!=='code')return loginView();
  var u=drv();
  var h='<div class="card stack"><span class="label">Solo la primera vez</span><h2>Activa este móvil</h2><p class="muted">Escribe el código que te ha dado Iván. Después el móvil te recuerda y no tienes que volver a registrarte.</p><input class="inp mono" id="regCode" type="text" autocomplete="off" autocapitalize="characters" placeholder="XXXX-XXXX" aria-label="Código de alta" value="'+esc(S.regVal||'')+'" style="text-transform:uppercase;font-size:20px;text-align:center">'+(S.regErr?'<div class="banner bad"><span>'+esc(S.regErr)+'</span></div>':'')+'<button class="btn yel block" data-act="reg"'+(S.busy?' disabled':'')+'>'+(S.busy?'Comprobando…':'Activar')+'</button></div>';
- if(LIVE)h+='<button class="btn sm ghost" style="align-self:center" data-act="mlogin-open">Soy Iván (máster)</button>';
+ if(LIVE)h+='<button class="btn sm ghost" style="align-self:center" data-act="login-back">Volver a entrar con usuario y contraseña</button>';
  else h+='<div class="demo"><span class="label">Solo vista previa</span><p class="small muted">Código de ejemplo: <b class="mono">'+esc(u.code||'')+'</b></p></div>';
  return h;
 }
@@ -601,11 +610,11 @@ function $(id){return document.getElementById(id);}
 function renderHero(){
  var d=S.view==='driver';
  var photo=TAXI_PHOTO?'<div class="slot"><img alt="Taxi 4200" src="'+TAXI_PHOTO+'"></div>':'<div class="slot">'+I.taxi+'</div>';
- if(LIVE&&!S.role){$('hero').hidden=false;$('heroIn').innerHTML='<div><small>Taxi 4200</small><h1>'+(S.reg==='master'?'Entrada de Iván':'Activa tu móvil')+'</h1></div>'+photo;return;}
+ if(LIVE&&!S.role){$('hero').hidden=false;$('heroIn').innerHTML='<div><small>Taxi 4200</small><h1>'+(S.regMode==='code'?'Activa tu móvil':'Entrar')+'</h1></div>'+photo;return;}
  var act=d&&drv().status==='ACTIVO';
  var first=act&&S.reg==='code';
  $('hero').hidden=!!(act&&S.reg==='welcome');
- $('heroIn').innerHTML='<div><small>'+(first?'Taxi 4200 · Primera vez':(d?'Taxi 4200 · Conductor':'Taxi 4200 · Control total'))+'</small><h1>'+(first?'Activa tu móvil':(d?'Hola, '+esc(fn1(drv().name)):'Hola, Iván'))+'</h1></div>'+photo;
+ $('heroIn').innerHTML='<div><small>'+(first?'Taxi 4200 · Primera vez':(d?'Taxi 4200 · Conductor':'Taxi 4200 · Control total'))+'</small><h1>'+(first?'Activa tu móvil':(d?'Hola, '+esc(fn1(drv().name)):'Hola, Iván'))+'</h1></div>'+photo+((LIVE&&S.role&&!S.mine)?'<button class="btn sm ghost" style="position:absolute;top:6px;right:8px;min-height:32px;padding:2px 12px;background:var(--surface);z-index:2" data-act="salir">Salir</button>':'');
 }
 
 function renderTabs(){
@@ -621,7 +630,7 @@ function renderTabs(){
   var pend=S.days.filter(function(d){return !d.accepted;}).length+S.requests.filter(function(r){return r.estado==='pendiente';}).length;
   var pr=S.problems.filter(function(p){return p.open;}).length;
   var pe=S.expenses.filter(function(x){return x.estado==='pendiente';}).length;
-  t=[['panel','Panel',I.grid,pend],['dias','Días',I.list],['gastos','Gastos',I.euro,pe],['prob','Problemas',I.flag,pr],['users','Usuarios',I.users],['mas','Gestión',I.more]];
+  t=[['cc','Centro',I.chart],['panel','Panel',I.grid,pend],['dias','Días',I.list],['gastos','Gastos',I.euro,pe],['prob','Problemas',I.flag,pr],['users','Usuarios',I.users],['mas','Gestión',I.more]];
  }
  $('tabs').innerHTML=t.map(function(x){return '<button data-act="tab" data-t="'+x[0]+'" aria-current="'+(cur===x[0]&&!S.openDay?'true':'false')+'">'+x[2]+'<span>'+x[1]+'</span>'+(x[3]?'<span class="badge">'+x[3]+'</span>':'')+'</button>';}).join('');
 }
@@ -1008,14 +1017,14 @@ function driverSent(){
  var val=S.mine?st.tot:st.parte;
  var msg=val>=MSG.t3?MSG.g500:(val>=MSG.t2?MSG.g400:(val<MSG.t1?MSG.low:''));
  var ef=dayEf(d),dd=r2(st.parte-ef);
- h+='<div class="earn"><span class="label" style="color:inherit;opacity:.7">Turno enviado · '+(S.mine?'total del día':'tu beneficio de hoy')+'</span><span class="big">'+eur(val)+'</span><span class="small" style="opacity:.85">'+hm(st.h)+' · '+Math.round(st.km)+' km'+(st.ph!==null?' · '+eur(st.ph)+' por hora':'')+'</span></div>';
+ h+='<div class="gain"><span class="label" style="color:inherit;opacity:.9">Turno enviado · '+(S.mine?'total del día':'lo que te llevas hoy')+'</span><span class="big">'+eur(val)+'</span><span class="small" style="opacity:.85">'+hm(st.h)+' · '+Math.round(st.km)+' km'+(st.ph!==null?' · '+eur(st.ph)+' por hora':'')+'</span></div>';
  if(msg)h+='<div class="banner ok"><span><b>'+esc(msg)+'</b></span></div>';
  if(!S.mine)h+=debtBox(debtAll());
  h+='<div class="card stack"><h3>Tu turno, como en la hoja</h3>'
   +'<div class="row sp"><span>Facturado (taxímetro + FreeNow)</span><b>'+eur(st.tot)+'</b></div>'
-  +'<div class="row sp"><span>Lo que te llevas ('+drv().pct+' %)</span><b>'+eur(st.parte)+'</b></div>'
+  +'<div class="row sp" style="color:var(--ok);font-size:20px"><span>Lo que te llevas ('+drv().pct+' %)</span><b>'+eur(st.parte)+'</b></div>'
   +'<div class="row sp"><span>Efectivo que llevas</span><b>'+eur(ef)+'</b></div>'
-  +'<div class="row sp"><span>'+(dd>=0?'De este turno, Iván te debe':'De este turno, le debes')+'</span><b>'+eur(Math.abs(dd))+'</b></div>'
+  +'<div class="row sp" style="color:var('+(dd>=0?'--ok':'--warn')+');font-weight:600"><span>'+(dd>=0?'De este turno, Iván te debe':'De este turno, le debes')+'</span><b>'+eur(Math.abs(dd))+'</b></div>'
   +'<div class="row sp"><span>Kilómetros · horas</span><b>'+Math.round(st.km)+' km · '+hm(st.h)+'</b></div>'
   +'<div class="row sp"><span>Facturado por hora</span><b>'+(st.h>0?eur(r2(st.tot/st.h)):'—')+'</b></div>'
   +'<div class="row sp"><span>Facturado por km</span><b>'+(st.km>0?eur(r2(st.tot/st.km)):'—')+'</b></div>'
@@ -1070,7 +1079,7 @@ function masterPanel(){
  var mineBtn=LIVE?'<button class="btn yel block" data-act="mine-start">'+I.cam+' Subir un turno mío</button>':'';
  var pend=S.days.filter(function(d){return !d.accepted&&d.estado!=='VERDE';});
  var rev=S.days.filter(function(d){return !d.accepted&&d.estado==='VERDE';});
- var h=saldoCard()+mineBtn+'<div class="stats"><div><b>'+pend.length+'</b><span class="small muted">A aclarar</span></div><div><b>'+rev.length+'</b><span class="small muted">Por aceptar</span></div><div><b>'+S.problems.filter(function(p){return p.open;}).length+'</b><span class="small muted">Problemas</span></div></div>';
+ var h=mineBtn+'<div class="stats"><div><b>'+pend.length+'</b><span class="small muted">A aclarar</span></div><div><b>'+rev.length+'</b><span class="small muted">Por aceptar</span></div><div><b>'+S.problems.filter(function(p){return p.open;}).length+'</b><span class="small muted">Problemas</span></div></div>';
  var ex=S.expenses.filter(function(x){return x.estado==='pendiente';});
  if(ex.length){h+='<h2>Gastos por confirmar</h2>';ex.forEach(function(e){h+='<div class="stack">'+exMail(e)+exActions(e)+'</div>';});}
  var rq=S.requests.filter(function(r){return r.estado==='pendiente';});
@@ -1081,7 +1090,7 @@ function masterPanel(){
  h+='<h2>Verdes por aceptar</h2>';
  if(!rev.length)h+='<div class="card"><p class="muted">No hay días verdes esperando tu check.</p></div>';
  rev.forEach(function(d){h+=dayRow(d);});
- h+=(LIVE?'<button class="btn sm ghost" style="align-self:flex-start" data-act="reload">Actualizar</button>':'')+'<h3>Registro de actividad</h3><div class="card stack">'+S.log.slice(0,8).map(function(l){return '<div class="row small"><span class="mono muted" style="min-width:84px">'+esc(l.t)+'</span><span>'+esc(l.x)+'</span></div>';}).join('')+'</div>';
+ h+=(LIVE?'<button class="btn sm ghost" style="align-self:flex-start" data-act="reload">Actualizar</button>':'')+'<h3>Registro de actividad</h3><div class="card stack">'+S.log.slice(0,8).map(function(l){return '<div class="row small"><span class="mono muted" style="min-width:118px">'+(l.n?'Nº '+l.n+' · ':'')+esc(l.t)+'</span><span>'+esc(l.x)+'</span></div>';}).join('')+'</div>';
  if(LIVE)h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="logout">Cerrar la sesión de Iván</button>';
  return h;
 }
@@ -1104,7 +1113,7 @@ var DASH_URL='https://drive.google.com/file/d/1xJQHEnmjILE7AFnfbFWp6iQTLv9Y20hC/
 var FAC_TIPOS=['Taller','Gasoil','Seguro','Gestoría','Otro'];
 function masterMas(){
  var sub=S.msub||'mes';
- var h='<h2>Gestión</h2><div class="chips" role="tablist">'+[['mes','Mes'],['excel','Excel'],['fac','Facturas'],['cc','Centro']].map(function(x){return '<button class="pick" role="tab" data-act="msub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
+ var h='<h2>Gestión</h2><div class="chips" role="tablist">'+[['mes','Mes'],['excel','Excel'],['fac','Facturas']].map(function(x){return '<button class="pick" role="tab" data-act="msub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
  return h+({mes:masMes,excel:masExcel,fac:masFac,cc:masCC}[sub]||masMes)();
 }
 function ymAdd(ym,n){var a=ym.split('-'),d=new Date(+a[0],+a[1]-1+n,1);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}
@@ -1136,9 +1145,10 @@ function masMes(){
  else if(LIVE&&xm&&!xm.conectado)h+='<div class="hint">Conecta el Excel en Más › Excel para ver aquí el histórico.</div>';
  if(LIVE){var fc=(S.fnm||{})[ym];h+='<div class="card stack"><b>Comisión FreeNow del mes (captura de Mortada)</b><p class="small muted">Escribe la comisión total que FreeNow le cobró a Mortada este mes. Tú le devuelves el 50 %.</p><div class="row"><input class="inp" id="fnmIn" type="text" inputmode="decimal" placeholder="0,00" value="'+(fc==null?'':esc(String(fc).replace('.',',')))+'" autocomplete="off" style="flex:1"><button class="btn sm pri" data-act="fnm-save">Guardar</button></div>'+(S.fnmErr?'<span class="small" style="color:var(--bad,#b00020)">'+esc(S.fnmErr)+'</span>':'')+(fc!=null?'<div>Le devuelves <b class="mono">'+eur(r2(fc/2))+'</b> (50 % de '+eur(fc)+')</div>':'')+'</div>';}
  h+='<div class="hint">🟢 Esto es el mes que lleva la app. El histórico completo (otros meses y años) está en el Centro de control, que lee de tu Excel.</div>';
- h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="msub" data-v="cc">Abrir Centro de control</button>';
+ h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="tab" data-t="cc">Abrir Centro de control</button>';
  return h;
 }
+function masCCtab(){return '<h2>Centro de control</h2>'+masCC();}
 function masCC(){
  var h='<div class="hint">🟢 El Centro de control es tu panel con todo el histórico (lee de tu Excel). Se abre dentro de la app, sin salir.</div>';
  if(!LIVE)return h+'<div class="card"><p class="muted">Esto funciona en la app real.</p></div>';
@@ -1341,6 +1351,7 @@ function masterUsers(){
    var on=(u.status==='ACTIVO'||u.status==='POR ACTIVAR');
    if(u.device)h+='<div class="row sp"><span class="small muted">Móvil vinculado: '+esc(u.device)+'</span><button class="btn sm ghost" data-act="unlink" data-id="'+u.id+'">Desvincular</button></div>';
    else if(LIVE&&on&&!u.code)h+='<div class="row sp"><span class="small muted">El código ya no se puede ver.</span><button class="btn sm ghost" data-act="unlink" data-id="'+u.id+'">Código nuevo</button></div>';
+   if(LIVE&&on){S.passMsg=S.passMsg||{};h+='<div class="stack"><span class="small muted">Usuario para entrar: <b>'+esc(fn1(u.name))+'</b></span><div class="row"><input class="inp" id="pw_'+u.id+'" type="text" placeholder="Contraseña nueva (mín. 4)" autocomplete="off"><button class="btn sm pri" data-act="pass-set" data-id="'+u.id+'">Poner contraseña</button></div>'+(S.passMsg[u.id]?'<span class="small">'+esc(S.passMsg[u.id])+'</span>':'')+'</div>';}
    if(on){
     if(S.confirm===u.id)h+='<div class="banner bad"><b>¿Bloquear a '+esc(u.name)+'?</b><span>Dejará de poder entrar, subir y consultar. Su histórico se conserva.</span><div class="row"><button class="btn sm" style="background:var(--surface)" data-act="cancel">Cancelar</button><button class="btn sm pri" data-act="block-yes" data-id="'+u.id+'">Sí, bloquear</button></div></div>';
     else h+='<button class="btn sm bad" style="align-self:flex-start" data-act="block" data-id="'+u.id+'">Bloquear acceso</button>';
@@ -1360,7 +1371,7 @@ function masterUsers(){
 function renderMain(){
  var h='';
  if(LIVE&&(S.loading||S.netFail||!S.role)){
-  $('app').innerHTML=S.loading?loadView():(S.netFail?netFailView():(S.reg==='master'?mloginView():regView()));
+  $('app').innerHTML=S.loading?loadView():(S.netFail?netFailView():regView());
   return;
  }
  if(S.view==='driver'){
@@ -1375,7 +1386,7 @@ function renderMain(){
   }
  }else{
   if(S.openDay)h=masterDetail();
-  else h={panel:masterPanel,dias:masterDays,gastos:masterExp,prob:masterProb,users:masterUsers,mas:masterMas}[S.mtab]();
+  else h={cc:masCCtab,panel:masterPanel,dias:masterDays,gastos:masterExp,prob:masterProb,users:masterUsers,mas:masterMas}[S.mtab]();
  }
 
  if(S.ocrBusy>0&&S.view==='driver'&&S.dtab==='up'&&(S.screen==='up'||S.screen==='confirm'))h=thinkHtml('Un segundo, estoy leyendo las fotos…<br><span style="font-weight:400">Puedes seguir; los números aparecerán solos.</span>','<button class="btn sm ghost" data-act="ocr-skip">Seguir sin esperar</button>')+h;
@@ -1428,7 +1439,7 @@ function dinoSync(){}
 var THINKN=0;
 function thinkHtml(msg,skip){
  var bt=skip?'<span class="wslow"><span>Tarda más de lo normal, pero sigue en marcha.</span><span class="row">'+skip+'</span></span>':'';
- var k=(THINKN++)%3,sc;
+ var k=(THINKN++)%2+1,sc;
  var TX='<g class="tx"><g class="tj"><path d="M8 27v-6c0-2 1-3 3-3l9-1 6-7h16l6 7h9c3 0 5 2 5 4v6z" style="fill:#16161a"/><path d="M23 11h8v7h-12zM33 11h8l4 7h-12z" style="fill:#FFC700"/><path d="M18 18h9v9H12v-6zM45 18h6v9H45z" style="fill:#FFC700" opacity=".0"/><rect x="25" y="4" width="10" height="4" rx="1" style="fill:#FFC700"/><rect x="8" y="22" width="48" height="3" style="fill:#FFC700"/><circle class="wl" cx="19" cy="28" r="5" style="fill:#16161a;stroke:#FFC700" stroke-width="1.5"/><circle class="wl" cx="46" cy="28" r="5" style="fill:#16161a;stroke:#FFC700" stroke-width="1.5"/></g></g>';
  var road='<line class="rd" x1="0" y1="38" x2="120" y2="38" stroke="currentColor" stroke-width="2" stroke-dasharray="8 8" opacity=".45"/>';
  var sign='<g class="sg"><rect x="1.2" y="-14" width="1.8" height="14" fill="currentColor"/><circle cx="2" cy="-16" r="6" fill="#d12"/><rect x="-2" y="-17" width="8" height="2.4" fill="#fff"/></g>';
@@ -1438,7 +1449,7 @@ function thinkHtml(msg,skip){
  return '<div class="think" role="status" aria-live="polite"><svg viewBox="0 0 120 44" aria-hidden="true">'+sc+'</svg><span class="wst"><span>'+msg+'</span>'+bt+'</span></div>';
 }
 function savePos(){if(!(LIVE&&S.role==='master'&&S.view==='master'))return;try{localStorage.setItem('turnos_pos',JSON.stringify({t:S.mtab,s:S.msub||'mes',m:S.mmes||'',d:S.dfilter==null?null:S.dfilter}));}catch(e){}}
-function restorePos(){try{var q=JSON.parse(localStorage.getItem('turnos_pos')||'null');if(q&&['panel','dias','gastos','prob','users','mas'].indexOf(q.t)>=0){S.mtab=q.t;S.msub=q.s||'mes';if(q.m)S.mmes=q.m;if(q.d!=null)S.dfilter=q.d;}}catch(e){}}
+function restorePos(){try{var q=JSON.parse(localStorage.getItem('turnos_pos')||'null');if(q&&['cc','panel','dias','gastos','prob','users','mas'].indexOf(q.t)>=0){S.mtab=q.t;S.msub=q.s||'mes';if(q.m)S.mmes=q.m;if(q.d!=null)S.dfilter=q.d;}}catch(e){}}
 function render(keep){renderBar();renderHero();renderMain();renderTabs();if(!keep)window.scrollTo(0,0);saveDraftSoon();savePos();navPush();dinoSync();regSync();}
 
 /* ---------- lectura de fotos en el móvil (ticket y TPV) ---------- */
@@ -1813,7 +1824,7 @@ function act(a,d){
   case 'reset':init();render();return;
   case 'tab':
    if(S.view==='driver'){S.dtab=d.t;if(d.t==='up'&&S.screen==='sent')S.screen='up';if(d.t==='up'&&S.screen==='home')S.screen='up';}
-   else{S.mtab=d.t;S.openDay=null;S.confirm=null;S.altaOpen=null;if(d.t==='mas')loadMas();}
+   else{S.mtab=d.t;S.openDay=null;S.confirm=null;S.altaOpen=null;if(d.t==='mas')loadMas();if(d.t==='cc'&&LIVE)ccLoad();}
    render();
    if(LIVE&&S.role==='master'&&!S.busy)refresh();
    return;
@@ -1968,9 +1979,9 @@ function send(){
 
 /* ---------- modo LIVE: servidor real ---------- */
 var TK_KEY='turnos_tk',memTk='';
-function getTok(){try{return localStorage.getItem(TK_KEY)||memTk;}catch(e){return memTk;}}
-function setTok(t){memTk=t;try{localStorage.setItem(TK_KEY,t);}catch(e){}}
-function clearTok(){memTk='';try{localStorage.removeItem(TK_KEY);}catch(e){}}
+function getTok(){try{return localStorage.getItem(TK_KEY)||sessionStorage.getItem(TK_KEY)||memTk;}catch(e){return memTk;}}
+function setTok(t,persist){memTk=t;try{if(persist===false){localStorage.removeItem(TK_KEY);sessionStorage.setItem(TK_KEY,t);}else{localStorage.setItem(TK_KEY,t);sessionStorage.removeItem(TK_KEY);}}catch(e){}}
+function clearTok(){memTk='';try{localStorage.removeItem(TK_KEY);sessionStorage.removeItem(TK_KEY);}catch(e){}}
 var ERR={
  SIN_RED:'No hay conexión con el servidor. Revisa tu internet e inténtalo otra vez.',
  NO_AUTENTICADO:'Este móvil ya no está vinculado. Pídele un código nuevo a Iván.',
@@ -2029,7 +2040,7 @@ function mapUser(u){
  if(u.vinculado)delete S.codes[u.id];
  return {id:u.id,name:u.nombre,role:u.rol,status:st,pct:u.pct,device:u.vinculado?(u.dispositivo||'Sí'):'',code:S.codes[u.id]||null};
 }
-var LOGT={REGISTRO:'activó su móvil',TURNO_ENVIADO:'envió un turno',TURNO_REENVIADO:'reenvió un turno corregido',LOGIN_MASTER:'entró como máster',LOGIN_MASTER_FALLIDO:'intento fallido de entrar como máster',PIDE_CORRECCION:'pidió corregir un día',GASTO:'subió un gasto',ACEPTA_DIA:'aceptó un día',MARCA_PROBLEMA:'marcó un problema',RESUELVE_PROBLEMA:'resolvió un problema',GASTO_APROBADO:'confirmó un gasto',GASTO_RECHAZADO:'rechazó un gasto',GASTO_PAGADO:'pagó un gasto',AUTORIZA_CORRECCION:'autorizó una corrección',RECHAZA_CORRECCION:'rechazó una corrección',ALTA_USUARIO:'dio de alta a un usuario',NUEVO_CODIGO:'generó un código nuevo',USUARIO_BLOQUEADO:'bloqueó a un usuario',USUARIO_ACTIVO:'reactivó a un usuario',USUARIO_ARCHIVADO:'archivó a un usuario',DESVINCULA:'desvinculó un móvil',CARGA_HISTORICO:'cargó días del Excel en la app',ERROR:'error del servidor'};
+var LOGT={REGISTRO:'activó su móvil',TURNO_ENVIADO:'envió un turno',TURNO_REENVIADO:'reenvió un turno corregido',LOGIN_MASTER:'entró como máster',LOGIN_MASTER_FALLIDO:'intento fallido de entrar como máster',PIDE_CORRECCION:'pidió corregir un día',GASTO:'subió un gasto',ACEPTA_DIA:'aceptó un día',MARCA_PROBLEMA:'marcó un problema',RESUELVE_PROBLEMA:'resolvió un problema',GASTO_APROBADO:'confirmó un gasto',GASTO_RECHAZADO:'rechazó un gasto',GASTO_PAGADO:'pagó un gasto',AUTORIZA_CORRECCION:'autorizó una corrección',RECHAZA_CORRECCION:'rechazó una corrección',ALTA_USUARIO:'dio de alta a un usuario',NUEVO_CODIGO:'generó un código nuevo',USUARIO_BLOQUEADO:'bloqueó a un usuario',USUARIO_ACTIVO:'reactivó a un usuario',USUARIO_ARCHIVADO:'archivó a un usuario',DESVINCULA:'desvinculó un móvil',LOGIN_USUARIO:'entró',PONE_CLAVE:'puso contraseña a',CARGA_HISTORICO:'cargó días del Excel en la app',ERROR:'error del servidor'};
 function logDet(a,d){
  d=String(d==null?'':d);
  var m=d.match(/^(\d+)\|(\d{4})-(\d{2})-(\d{2})\s*(.*)$/);
@@ -2041,14 +2052,14 @@ function logDet(a,d){
 }
 function mapLog(l){
  var t=String(l.t||''),m=t.match(/^\d{4}-(\d{2})-(\d{2}) (\d{2}:\d{2})/),dt=logDet(l.accion,l.detalle);
- return {t:m?m[2]+'/'+m[1]+' '+m[3]:t,x:(l.uid?fn1(uname(l.uid))+' ':'')+(LOGT[l.accion]||l.accion)+(dt?' · '+dt:'')};
+ return {n:l.n,t:m?m[2]+'/'+m[1]+' '+m[3]:t,x:(l.uid?fn1(uname(l.uid))+' ':'')+(LOGT[l.accion]||l.accion)+(dt?' · '+dt:'')};
 }
 function applySnap(j){
  TODAY=iso(new Date());
  if(j.role!=='master'&&!S._histDone&&LIVE){S._histDone=true;setTimeout(function(){call('miHistorico',{}).then(function(c){if(c.ok&&c.dias){S.hist=c.dias;render(true);}});},300);}
  if(j.role!=='master'&&!S._cmpDone&&LIVE){S._cmpDone=true;setTimeout(function(){call('miComparativa',{}).then(function(c){if(c.ok){S.cmp=c;render(true);}});},0);}
- if(j.role==='master'&&!S._saldoDone){S._saldoDone=true;setTimeout(saldoLoad,200);}
  if(j.role==='master'&&!S._posDone){S._posDone=true;restorePos();if(S.mtab==='mas')setTimeout(loadMas,0);}
+ if(j.role==='master'&&S.mtab==='cc'&&!S._ccAuto){S._ccAuto=true;setTimeout(ccLoad,300);}
  S.role=j.role;S.view=(j.role==='master'&&!S.mine)?'master':'driver';
  S.me={id:j.me.id,name:j.me.nombre,pct:(j.role==='master'?0:(j.me.pct||45)),status:j.me.estado||'ACTIVO'};
  S.days=(j.days||[]).filter(function(d){return d.key;}).map(mapDay).sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:a.driver-b.driver);});
@@ -2163,6 +2174,26 @@ function liveAct(a,d){
  if(masAct(a,d))return true;
  switch(a){
   case 'retry':boot();return true;
+  case 'code-open':S.regMode='code';S.regErr='';render();return true;
+  case 'login-back':S.regMode='';S.regErr='';render();return true;
+  case 'login':{var lu=$('lgUser'),lp=$('lgPass'),lr=$('lgRem'),uv=lu?lu.value.trim():'',pv=lp?lp.value:'';S.loginUser=uv;S.loginRem=lr?lr.checked:true;
+   if(!uv||!pv){S.regErr='Escribe usuario y contraseña.';render(true);return true;}
+   if(S.busy)return true;S.regErr='';S.busy=true;render(true);
+   call('loginUser',{usuario:uv,clave:pv}).then(function(j){
+    if(!j.ok){S.busy=false;S.regErr=errMsg(j);render(true);return;}
+    setTok(j.token,S.loginRem);try{localStorage.setItem('turnos_rem',S.loginRem?'1':'0');if(S.loginRem)localStorage.setItem('turnos_user',uv);else localStorage.removeItem('turnos_user');}catch(e){}
+    S.regErr='';S.openDay=null;S.reg='done';S._ccAuto=false;if(j.user&&j.user.rol==='MASTER')S.mtab='cc';else S.dtab='home';
+    return refresh().then(function(){window.scrollTo(0,0);});
+   });
+   return true;}
+  case 'salir':
+   if(S.role==='master'){call('logout',{}).then(function(){clearTok();ccClose(true);liveReset();S._ccAuto=false;S.regMode='';render();});}
+   else{S.exitAsk=true;render(true);window.scrollTo(0,0);}
+   return true;
+  case 'pass-set':{var pe=$('pw_'+id),pw0=pe?pe.value:'';S.passMsg=S.passMsg||{};
+   if(String(pw0).length<4){S.passMsg[id]='Mínimo 4 caracteres.';render(true);return true;}
+   call('setUserPass',{id:id,clave:pw0}).then(function(j){S.passMsg[id]=j.ok?('Contraseña puesta. Entra con el usuario «'+fn1(j.nombre)+'» y esa contraseña.'):(j.msg||errMsg(j));render(true);});
+   return true;}
   case 'wait-skip':S.busy=false;S.sendErr='Todavía no hay respuesta. Puedes pulsar Enviar otra vez: si ya había llegado, la app lo detecta y no se duplica.';render(true);return true;
   case 'ocr-skip':S.ocrBusy=0;S.gen=(S.gen||0)+1;S.ocrErr=true;render(true);return true;
   case 'draft-restore':draftRestore();return true;
@@ -2289,6 +2320,7 @@ document.addEventListener('change',function(e){
 document.addEventListener('keydown',function(e){
  if(!LIVE||e.key!=='Enter'||!e.target)return;
  if(e.target.id==='mpw')act('mlogin',{});
+ else if(e.target.id==='lgUser'||e.target.id==='lgPass')act('login',{});
  else if(e.target.id==='regCode')act('reg',{});
 });
 document.addEventListener('visibilitychange',function(){if(LIVE&&document.visibilityState==='visible'&&canAutoRefresh())refresh();});
