@@ -318,7 +318,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='v94';
+var APP_V='v95';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -417,7 +417,7 @@ function verify(f,caps,pct,pend,lite){
 var S;
 function mkDay(o){var pend=[];var res=verify(o.f,o.caps,45,pend);return {id:o.id,date:o.date,driver:2,f:o.f,caps:o.caps,pct:45,res:res,estado:res.overall,accepted:!!o.accepted,motivos:o.motivos||[],texto:o.texto||'',pend:pend,incid:[],coche:null};}
 function init(){
- S={view:'driver',screen:'home',dtab:'home',mtab:'panel',openDay:null,
+ S={view:'driver',screen:'home',dtab:'home',mtab:'cc',openDay:null,
   slots:{tpv:'none',taximetro:'none',freenow:'none',servicios:'none'},caps:0,form:{tarifasOk:false},
   motivos:[],texto:'',sendErr:'',
   days:[
@@ -1513,7 +1513,7 @@ function renderMain(){
  if(S.camTip)h=camTipHtml()+h;
  if(S.pickLost)h='<div class="banner ink"><b>El móvil cerró la app mientras hacías la foto</b><span>He recuperado lo que llevabas. Haz otra vez esa última foto.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="pick-x">Entendido</button></div>'+h;
  if(S.exitAsk||S.exitMsg)h='<div class="banner ink exitb"><b>'+(S.exitMsg?esc(S.exitMsg):'¿Quieres salir de la app?')+'</b>'+(S.exitMsg?'':'<span>Lo que llevas se queda guardado en este móvil.</span><div class="row"><button class="btn sm ghost" style="background:var(--surface)" data-act="exit-no">Seguir aquí</button><button class="btn sm pri grow" data-act="exit-yes">Sí, salir</button></div>')+'</div>'+h;
- $('app').innerHTML=h+regFoot();
+ $('app').innerHTML=h+regFoot()+'<div style="text-align:center;opacity:.45;font-size:11px;margin:14px 0 4px">Versión '+APP_V+'</div>';
 }
 var NAV={a:[null],i:0,leaving:false,busy:false};
 function navSnap(){return {v:S.view||'',mt:S.mtab||'',ms:S.msub||'',dt:S.dtab||'',sc:S.screen||'',cc:!!S.ccOpen,ov:!!S.chk};}
@@ -2151,7 +2151,7 @@ function authCheck(j){
   j.authFail=true;
  }
 }
-function liveReset(){S.role=null;S.me=null;S.days=[];S.problems=[];S.users=[];S.expenses=[];S.requests=[];S.log=[];S.reg='code';S.view='driver';S.openDay=null;S.busy=false;S.loading=false;S.netFail=false;S.err='';S.regErr='';S.dtab='home';S.mtab='panel';resetForm();}
+function liveReset(){S.role=null;S.me=null;S.days=[];S.problems=[];S.users=[];S.expenses=[];S.requests=[];S.log=[];S.reg='code';S.view='driver';S.openDay=null;S.busy=false;S.loading=false;S.netFail=false;S.err='';S.regErr='';S.dtab='home';S.mtab='cc';resetForm();}
 function call(action,data){
  var body={};for(var k in (data||{}))body[k]=data[k];
  body.action=action;var tk=getTok();if(tk)body.token=tk;
@@ -2199,7 +2199,7 @@ function applySnap(j){
  TODAY=iso(new Date());
  if(j.role!=='master'&&!S._histDone&&LIVE){S._histDone=true;setTimeout(function(){call('miHistorico',{}).then(function(c){if(c.ok&&c.dias){S.hist=c.dias;render(true);}});},300);}
  if(j.role!=='master'&&!S._cmpDone&&LIVE){S._cmpDone=true;setTimeout(function(){call('miComparativa',{}).then(function(c){if(c.ok){S.cmp=c;render(true);}});},0);}
- if(j.role==='master'&&!S._posDone){S._posDone=true;restorePos();if(S.mtab==='mas')setTimeout(loadMas,0);}
+ if(j.role==='master'&&!S._posDone){S._posDone=true;S.mtab='cc';}
  S.role=j.role;S.view=(j.role==='master'&&!S.mine)?'master':'driver';
  S.me={id:j.me.id,name:j.me.nombre,pct:(j.role==='master'?0:(j.me.pct||45)),status:j.me.estado||'ACTIVO'};
  S.days=(j.days||[]).filter(function(d){return d.key;}).map(mapDay).sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:a.driver-b.driver);});
@@ -2224,7 +2224,15 @@ function refresh(){
   render(true);
  });
 }
+function verCheck(){
+ if(!LIVE||S._vc)return;S._vc=true;
+ try{fetch(location.pathname+'?_='+Date.now(),{cache:'no-store'}).then(function(r){return r.text();}).then(function(t){
+  var m=/var APP_V='(v\d+)'/.exec(t);
+  if(m&&m[1]!==APP_V){var k='turnos_reload_'+m[1];try{if(sessionStorage.getItem(k))return;sessionStorage.setItem(k,'1');}catch(e){return;}location.replace(location.pathname+'?v='+m[1]);}
+ }).catch(function(){});}catch(e){}
+}
 function boot(){
+ verCheck();
  S.netFail=false;S.err='';
  if(!getTok()){S.loading=false;S.role=null;S.reg=S.reg==='master'?'master':'code';render();return;}
  S.loading=true;render();
