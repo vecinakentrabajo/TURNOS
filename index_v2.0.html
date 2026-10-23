@@ -309,9 +309,9 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 .chk-top{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-block:calc(10px + env(safe-area-inset-top,0px)) 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));font-size:14px}
 .chk-top button,.chk-ctl button{background:#222831;color:#fff;border:1px solid #3a4350;border-radius:6px;min-height:40px;padding:6px 12px;font-size:15px;font-weight:600}
 .chk-view{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;background:#000}
-.chk-stage{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.chk-stage{position:absolute;left:0;top:0;transform-origin:0 0}
 .chk-stage img{display:block;width:100%;height:auto;user-select:none;-webkit-user-drag:none;pointer-events:none}
-.chk-box{position:absolute;border:2px solid #FFC700;border-radius:6px;box-shadow:0 0 0 9999px rgba(0,0,0,.28);animation:pulse 1.3s ease-in-out infinite;pointer-events:none}
+.chk-box{position:absolute;border:3px solid #FFC700;border-radius:6px;box-shadow:0 0 0 2px rgba(0,0,0,.55);pointer-events:none}
 @keyframes pulse{0%,100%{border-color:#FFC700}50%{border-color:#fff}}
 .chk-ctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:8px}
 .chk-ask{background:#15181d;padding:14px max(16px,env(safe-area-inset-left,0px)) calc(14px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:10px}
@@ -986,9 +986,11 @@ function fnParse(t){
 function fnReadFile(file){
  return Promise.all([ocrWorker(),ocrBitmap(file)]).then(function(a){
   var wk=a[0],bm=a[1],w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,tw=Math.min(1200,Math.max(w0,900)),th=Math.round(h0*tw/w0);
-  var g=ocrGray(bm,0,0,w0,h0,tw,th),sum=0,i;for(i=0;i<g.length;i+=7)sum+=g[i];
-  var oscuro=sum/Math.ceil(g.length/7)<120;
-  if(oscuro){for(i=0;i<g.length;i++)g[i]=255-g[i];g=LECTOR.prep(g,tw,th,40).norm;}
+  var g=ocrGray(bm,0,0,w0,h0,tw,th),i;
+  function fnDark(a,w,h){var sm=0,n=0,x0=Math.floor(w*.3),x1=Math.floor(w*.7),x,y;for(y=0;y<h;y+=3)for(x=x0;x<x1;x+=3){sm+=a[y*w+x];n++;}return n>0&&sm/n<120;} /* solo la banda central: los márgenes negros de la captura no cuentan */
+  var oscuro=fnDark(g,tw,th);
+  if(oscuro){for(i=0;i<g.length;i++)g[i]=255-g[i];}
+  g=LECTOR.prep(g,tw,th,40).norm; /* primera pasada ya con contraste local: el texto gris claro («Pago vía app», «Comisión») no se lee sin esto */
   function fr(q,w,h){return {x0:q.x0/w,x1:q.x1/w,y0:q.y0/h,y1:q.y1/h};}
   function lineBox(d,re,w,h){var ls=(d.lines||[]).filter(function(l){return re.test(l.text||'');});if(!ls.length)return null;var l=ls[0],ws=(l.words||[]).filter(function(x){return !/\d/.test(x.text||'')&&x.bbox;}),u;
    if(ws.length){u={x0:1e9,y0:1e9,x1:0,y1:0};ws.forEach(function(x){u.x0=Math.min(u.x0,x.bbox.x0);u.y0=Math.min(u.y0,x.bbox.y0);u.x1=Math.max(u.x1,x.bbox.x1);u.y1=Math.max(u.y1,x.bbox.y1);});}else u=l.bbox;
@@ -999,10 +1001,9 @@ function fnReadFile(file){
    if(loc.imp||loc.met||loc.fijo)r.loc=loc;}
   return ocrRec(wk,ocrCanvas(g,tw,th),6).then(function(d){var r=fnParse(d.text);fnLoc(r,d,tw,th);if(window.TURNOS_TEST)r.txt=d.text;if(r.imp!=null&&r.q==='ok')return r;
    /* segunda pasada: más contraste local y otra segmentación */
-   var tw2=Math.min(1500,Math.max(w0,1100)),th2=Math.round(h0*tw2/w0),g2=ocrGray(bm,0,0,w0,h0,tw2,th2),s2=0,j;for(j=0;j<g2.length;j+=7)s2+=g2[j];
-   if(s2/Math.ceil(g2.length/7)<120)for(j=0;j<g2.length;j++)g2[j]=255-g2[j];
-   var pp=LECTOR.prep(g2,tw2,th2,40);
-   return ocrRec(wk,ocrCanvas(pp.norm,tw2,th2),4).then(function(d2){var r2=fnParse(d2.text);fnLoc(r2,d2,tw2,th2);
+   var tw2=Math.min(1500,Math.max(w0,1100)),th2=Math.round(h0*tw2/w0),g2=ocrGray(bm,0,0,w0,h0,tw2,th2),j;
+   if(fnDark(g2,tw2,th2))for(j=0;j<g2.length;j++)g2[j]=255-g2[j];
+   return ocrRec(wk,ocrCanvas(g2,tw2,th2),4).then(function(d2){var r2=fnParse(d2.text);fnLoc(r2,d2,tw2,th2);
     if(r2.imp!=null&&(r.imp==null||(r2.q==='ok'&&r.q!=='ok'))){if(r.prop!=null&&r2.prop==null)r2.prop=r.prop;return r2;}
     if(r.imp==null&&r2.prop!=null&&r.prop==null)r.prop=r2.prop;
     return r;});});
