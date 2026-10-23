@@ -318,7 +318,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='v93';
+var APP_V='v94';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -528,7 +528,7 @@ function earnCard(ms){
 function loginView(){
  var u='',rem=true;try{u=localStorage.getItem('turnos_user')||'';rem=localStorage.getItem('turnos_rem')!=='0';}catch(e){}
  if(S.loginUser!=null)u=S.loginUser;if(S.loginRem!=null)rem=S.loginRem;
- return '<form class="card stack" onsubmit="return false"><span class="label">Taxi 4200</span><h2>Entrar</h2><input class="inp" id="lgUser" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" placeholder="Usuario" aria-label="Usuario" value="'+esc(u)+'"><div class="pwrow"><input class="inp" id="lgPass" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña"><button type="button" class="btn sm ghost" id="pwTog" data-act="pw-tog">Mostrar</button></div><label class="row" style="min-height:44px"><input type="checkbox" id="lgRem"'+(rem?' checked':'')+' style="width:22px;height:22px"> <span>Recordarme en este móvil</span></label>'+(S.regErr?'<div class="banner bad"><span>'+esc(S.regErr)+'</span></div>':'')+'<button type="button" class="btn yel block" data-act="login"'+(S.busy?' disabled':'')+'>'+(S.busy?'Comprobando…':'Acceder')+'</button></form><button class="btn sm ghost" style="align-self:center" data-act="code-open">Primera vez: tengo un código de alta</button>';
+ return (S.busy?thinkHtml('Comprobando usuario y contraseña…'):'')+'<form class="card stack" onsubmit="return false"><span class="label">Taxi 4200</span><h2>Entrar</h2><input class="inp" id="lgUser" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" placeholder="Usuario" aria-label="Usuario" value="'+esc(u)+'"><div class="pwrow"><input class="inp" id="lgPass" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña"><button type="button" class="btn sm ghost" id="pwTog" data-act="pw-tog">Mostrar</button></div><label class="row" style="min-height:44px"><input type="checkbox" id="lgRem"'+(rem?' checked':'')+' style="width:22px;height:22px"> <span>Recordarme en este móvil</span></label>'+(S.regErr?'<div class="banner bad"><span>'+esc(S.regErr)+'</span></div>':'')+'<button type="button" class="btn yel block" data-act="login"'+(S.busy?' disabled':'')+'>'+(S.busy?'Comprobando…':'Acceder')+'</button></form><button class="btn sm ghost" style="align-self:center" data-act="code-open">Primera vez: tengo un código de alta</button>';
 }
 function regView(){
  if(LIVE&&S.regMode!=='code')return loginView();
@@ -989,7 +989,12 @@ function dateWarn(){
  var txt=df<0?'El ticket empezó el '+dFmt(S.ticketDate)+' y este turno se guardará como '+dFmt(sd)+'. ¿Foto de otro día?':'El ticket empieza el '+dFmt(S.ticketDate)+', después de la fecha de este turno ('+dFmt(sd)+'). ¿Foto equivocada?';
  return '<div class="banner bad"><b>Revisa la fecha</b><span>'+txt+'</span>'+(S.mine?'<button class="btn sm yel" style="align-self:flex-start" data-act="use-ticket-date">Usar la fecha del ticket</button>':'<span class="small">Si es correcta, sigue: Iván lo verá marcado.</span>')+'</div>';
 }
+function tpvDateBad(){
+ if(!LIVE||S.mine||S.slots.tpv!=='ok')return false;
+ if(!S.tpvDate)return true;var df=dayDiff(S.tpvDate,S.ticketDate||shiftDate());return df!==0&&df!==1;
+}
 function tpvWarn(){
+ if(LIVE&&S.slots.tpv==='ok'&&!S.tpvDate)return '<div class="banner warn"><b>No he podido leer la fecha del TPV</b><span>Mira en la foto que sea del día del turno o del siguiente. Si no lo es, pulsa «Reportar incidencia»; Iván lo verá marcado.</span></div>';
  if(!LIVE||!S.tpvDate||S.slots.tpv!=='ok')return '';
  var base=S.ticketDate||shiftDate(),df=dayDiff(S.tpvDate,base);
  var n=Object.keys(S.tpvParts||{}).length;
@@ -1017,14 +1022,14 @@ function fnStep(){
 function fieldHtml(f){
  var st=f.s?S.slots[f.s]:null;
  var src=f.s?(st==='ok'?'<span class="chip ok">'+(LIVE?'Foto subida: escribe lo que ves':'Leído de foto')+'</span>':'<span class="chip warn">Sin foto: escríbelo o déjalo pendiente</span>'):'<span class="chip ink">Lo tecleas tú</span>';
- if(LIVE&&S.ocr&&S.ocr[f.k])src=(S.ocr[f.k].typed?'<span class="chip ok">Escrito por ti</span>':S.ocr[f.k].conf?'<span class="chip ok">Confirmado con la foto</span>':(S.ocr[f.k].ok?'<span class="chip ok">Leído de la foto</span>':'<span class="chip warn">Leído: compruébalo en la foto</span>'))+(!S.ocr[f.k].conf&&CHKL[f.k]&&chkItems(null,f.k).length?' <button class="btn sm ghost" data-act="chk-one" data-k="'+f.k+'">Ver en la foto</button>':'');
+ if(LIVE&&S.ocr&&S.ocr[f.k])src=(S.ocr[f.k].typed?'<span class="chip ok">Escrito por ti</span>':S.ocr[f.k].nolee?'<span class="chip warn">No lo he podido leer: elige uno o escríbelo</span>':S.ocr[f.k].conf?'<span class="chip ok">Confirmado con la foto</span>':(S.ocr[f.k].ok?'<span class="chip ok">Leído de la foto</span>':'<span class="chip warn">Leído: compruébalo en la foto</span>'))+(!S.ocr[f.k].conf&&CHKL[f.k]&&chkItems(null,f.k).length?' <button class="btn sm ghost" data-act="chk-one" data-k="'+f.k+'">Ver en la foto</button>':'');
  var v=S.form[f.k];if(v==null)v='';
  if(typeof v==='number')v=String(v).replace('.',',');
  var cd='',oo=S.ocr&&S.ocr[f.k];
- if(LIVE&&oo&&!oo.ok&&!oo.conf&&oo.cands&&oo.cands.length>1)cd='<div class="chips" style="grid-column:1/-1">'+oo.cands.slice(0,4).map(function(x){return '<button class="pick" data-act="pick-cand" data-k="'+f.k+'" data-v="'+x+'">'+String(x).replace('.',',')+'</button>';}).join('')+'</div>';
+ if(LIVE&&oo&&!oo.ok&&!oo.conf&&oo.cands&&oo.cands.length>=1)cd='<div class="small" style="grid-column:1/-1"><b>'+(f.k==='impresora'?'¿Cuál es el Importe TOTAL del ticket?':'¿Es uno de estos?')+'</b> Toca el correcto, o escríbelo.</div><div class="chips" style="grid-column:1/-1">'+oo.cands.slice(0,4).map(function(x){return '<button class="pick" data-act="pick-cand" data-k="'+f.k+'" data-v="'+x+'">'+String(x).replace('.',',')+'</button>';}).join('')+'</div>';
  return '<div class="field"><label class="nm" for="f_'+f.k+'">'+f.l+'</label><input id="f_'+f.k+'" data-f="'+f.k+'" type="text" '+(f.time?'placeholder="hh:mm"':'inputmode="decimal"')+' value="'+esc(v)+'" autocomplete="off"><div class="src">'+src+'</div>'+cd+(LIVE&&!S.mine?fincHtml(f.k):'')+(LIVE&&f.k==='kmTotales'?kmHelper():'')+(LIVE&&f.k==='tarifa3Decl'?'<div style="grid-column:1/-1">'+t3Html()+'</div>':'')+'</div>';
 }
-function pendList(){var p=[];SLOTS.forEach(function(s){if(S.slots[s.k]==='dudosa')p.push(s.t);});if(LIVE&&!S.mine&&auditData().some(function(x){return x.cambiado;}))p.push('Datos escritos a mano');return p;}
+function pendList(){var p=[];SLOTS.forEach(function(s){if(S.slots[s.k]==='dudosa')p.push(s.t);});if(LIVE&&!S.mine&&auditData().some(function(x){return x.cambiado;}))p.push('Datos escritos a mano');if(tpvDateBad())p.push('Fecha del TPV');if(LIVE&&!S.mine&&S.ticketDate&&dayDiff(S.ticketDate,shiftDate())!==0)p.push('Fecha del ticket');return p;}
 function liveHtml(){
  var r=verify(S.form,S.caps,drv().pct,pendList(),S.mine);
  var map={VERDE:['ok','Verde: todo cuadra'],ROJO:['bad','Rojo: '+(r.reasons[0]||'')],PENDIENTE:['warn','Pendiente de confirmar por Iván'],BLOQUEADO:['bad','Ticket incompleto: falta '+r.incomplete.join(', ')],FALTAN:['warn','Faltan datos: '+r.missing.join(', ')]}[r.overall];
@@ -1152,7 +1157,7 @@ function mailHtml(d){
  if(d.incid&&d.incid.length)why+=(why?' · ':'')+'Incidencias: '+d.incid.map(function(x){return x.slot+' ('+x.text+')';}).join(', ');
  return '<div class="mail"><span class="label">Correo a vecinakentrabajo@gmail.com</span><div><b>Día '+dl(d.date)+' pendiente de confirmar</b></div><div class="muted">'+esc(why||'Pendiente de tu check.')+'</div></div>';
 }
-function saldoLoad(){if(!LIVE||S.saldoBusy)return;S.saldoBusy=true;call('saldoMortada',{}).then(function(j){S.saldoBusy=false;S.saldo=j;render(true);},function(){S.saldoBusy=false;});}
+function saldoLoad(){if(!LIVE||S.saldoBusy)return;S.saldoBusy=true;call('saldoMortada',{}).then(function(j){S.saldoBusy=false;S.saldo=j;render(true);},function(){S.saldoBusy=false;S.saldo={ok:false,msg:'sin conexión'};});}
 function saldoCard(){
  if(!LIVE)return '';
  var s=S.saldo,hd='<span class="label" style="color:inherit;opacity:.75">Lo que debo a Mortada · a fecha de '+dl(TODAY)+'</span>';
@@ -1241,7 +1246,21 @@ function masMes(){
  h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="tab" data-t="cc">Abrir Centro de control</button>';
  return h;
 }
-function masCCtab(){return '<h2>Centro de control</h2>'+masCC();}
+function ccMonth(){var m=TODAY.slice(0,7),o={n:0,fm:0,fi:0,km:0,dm:0};S.days.forEach(function(d){if(d.date.slice(0,7)!==m)return;var t=num(d.f.total)||0;if(d.driver===1)o.fi+=t;else{o.fm+=t;o.dm++;}o.km+=num(d.f.kmTotales)||0;o.n++;});return o;}
+function debtMortada(){
+ if(!LIVE)return '—';var q=S.saldo;if(!q){saldoLoad();return 'Leyendo el Excel…';}
+ if(!q.ok||!q.conectado)return 'No disponible';var v=(q.panel!=null)?q.panel:q.suma;if(v==null)return 'No disponible';
+ return (v>0.004?'Le debes ':(v<-0.004?'Te debe ':'Estáis en paces '))+(Math.abs(v)<0.005?'':eur(Math.abs(v)));
+}
+function masCCtab(){
+ var mn=MONTHS[+TODAY.slice(5,7)-1],o=ccMonth();
+ var h='<h2>'+mn.charAt(0).toUpperCase()+mn.slice(1)+' · resumen</h2>';
+ h+='<div class="hgrid"><div class="hbox hy"><span class="label" style="color:inherit;opacity:.75">Facturado total</span><span class="big">'+eur0(o.fm+o.fi)+'</span><span class="small">'+o.n+' turno'+(o.n===1?'':'s')+'</span></div><div class="hbox hg"><span class="label" style="color:inherit;opacity:.85">Kilómetros</span><span class="big">'+Math.round(o.km).toLocaleString('es-ES')+'</span><span class="small">km este mes</span></div></div>';
+ h+='<div class="card stack"><div class="row sp"><span>Facturado por Mortada</span><b class="mono">'+eur(r2(o.fm))+'</b></div><div class="row sp"><span>Facturado por ti</span><b class="mono">'+eur(r2(o.fi))+'</b></div><div class="row sp"><span>Kilómetros realizados</span><b class="mono">'+Math.round(o.km).toLocaleString('es-ES')+' km</b></div><div class="row sp"><span>Dinero con Mortada</span><b>'+debtMortada()+'</b></div></div>';
+ if(!LIVE)return h+'<div class="card"><p class="muted">El Centro completo funciona en la app real.</p></div>';
+ if(S.ccErr)h+='<div class="banner bad"><span>'+esc(S.ccErr)+'</span></div>';
+ return h+'<button class="btn pri block" data-act="cc-open"'+(S.busy?' disabled':'')+'>'+(S.busy?'Cargando…':'¿Quieres saber más?')+'</button>';
+}
 function masCC(){
  var h='<div class="hint">🟢 El Centro de control es tu panel con todo el histórico (lee de tu Excel). Se abre dentro de la app, sin salir.</div>';
  if(!LIVE)return h+'<div class="card"><p class="muted">Esto funciona en la app real.</p></div>';
@@ -1414,7 +1433,7 @@ function masterDetail(){
  if(d.carga)h+='<div class="banner ink"><b>CARGADO POR CLAUDE · LOTE '+esc(d.carga.lote)+'</b><span class="small">Este día no lo subió el conductor: se copió del Excel de trabajo el '+esc(String(d.carga.cuando||'').slice(0,16))+'. No tiene fotos.</span></div>';
  if(d.motivoAcep&&!d.carga)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
- if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Incidencias con fotos</span>'+d.incid.map(function(x){return '<p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>';}).join('')+'</div>';
+ if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x){return '<p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
  if(d.pend.length)h+='<div class="hint">Pendiente de confirmar: '+d.pend.map(esc).join(', ')+'.</div>';
  if(LIVE&&d.carpeta)h+='<a class="btn sm ghost" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Ver fotos en Drive</a>';
@@ -1752,6 +1771,7 @@ function ocrApply(r,meta){
  S.ocr=S.ocr||{};
  if(meta&&meta.slot==='tpv'){S.tpvParts=S.tpvParts||{};if(r.f&&r.f.tpv!=null)S.tpvParts[meta.idx]=r.f.tpv;if(r.fecha)S.tpvDate=r.fecha;var ks=Object.keys(S.tpvParts);if(ks.length>1&&!(S.ocr.tpv&&S.ocr.tpv.typed)){var sm=0;ks.forEach(function(q){sm+=S.tpvParts[q];});S.form.tpv=Math.round(sm*100)/100;S.ocr.tpv={ok:true,slot:'tpv',idx:0,ar:r.ar||1.5,sum:ks.length};return;}}
  if(r&&r.fecha&&meta&&meta.slot==='taximetro'){S.ticketDate=r.fecha;S.ticketDateOk=!!r.fechaOk;}
+ if(r.cands)for(var ck in r.cands){var cl=r.cands[ck];if(cl&&cl.length&&!S.ocr[ck]&&ocrEmpty(S.form[ck])&&!(r.f&&r.f[ck]!=null)){S.ocr[ck]={ok:false,cands:cl,slot:meta&&meta.slot,idx:meta?meta.idx:0,box:null,ar:r.ar||1.5,nolee:true};}}
  for(var k in r.f){
   var okk=!!(r.q&&r.q[k]&&r.q[k].ok),prev=S.ocr[k];
   if(ocrEmpty(S.form[k])||(prev&&!prev.ok&&!prev.conf&&okk)){S.form[k]=r.f[k];S.ocr[k]={ok:okk,read:r.f[k],cands:(r.cands&&r.cands[k])||null,slot:meta&&meta.slot,idx:meta?meta.idx:0,box:(r.loc&&r.loc[k])||null,ar:r.ar||1.5};}
@@ -1905,7 +1925,8 @@ function inlineHtml(slot){
   if(!crop)crop='<div class="icrop none">'+((S.ocrBusy>0&&!has)?'Leyendo…':(has?'Mira la foto de arriba':'No se pudo leer'))+'</div>';
   var tipo=(k==='horaIni'||k==='horaFin')?'numeric':'decimal';
   var val=has?String(v).replace('.',','):'';
-  h+='<div class="irow'+(conf?' done':'')+'">'+crop+'<div class="iv"><label for="f_'+k+'">'+INL_L[k]+'</label><input id="f_'+k+'" data-f="'+k+'" type="text" inputmode="'+tipo+'" value="'+esc(val)+'" autocomplete="off" placeholder="'+(k==='horaIni'||k==='horaFin'?'hh:mm':'0,00')+'"><div class="acts2">'
+  var cr='';if(o&&o.cands&&o.cands.length&&!conf&&(!has||!o.ok))cr='<div class="small"><b>'+(k==='impresora'?'¿Cuál es el Importe TOTAL del ticket?':'¿Es uno de estos?')+'</b></div><div class="chips">'+o.cands.slice(0,4).map(function(x){return '<button class="pick" data-act="pick-cand" data-k="'+k+'" data-v="'+x+'">'+String(x).replace('.',',')+'</button>';}).join('')+'</div>';
+  h+='<div class="irow'+(conf?' done':'')+'">'+crop+'<div class="iv"><label for="f_'+k+'">'+INL_L[k]+'</label><input id="f_'+k+'" data-f="'+k+'" type="text" inputmode="'+tipo+'" value="'+esc(val)+'" autocomplete="off" placeholder="'+(k==='horaIni'||k==='horaFin'?'hh:mm':'0,00')+'">'+cr+'<div class="acts2">'
    +(conf?'<span class="chip ok">✓ '+(o.typed?'Escrito por ti':'Confirmado')+'</span> <button class="btn sm ghost" data-act="unok-one" data-k="'+k+'">Deshacer</button>':(has?'<button class="okbtn" data-act="ok-one" data-k="'+k+'">✓ Es correcto</button>':'<span class="small muted">Escríbelo y se da por bueno</span>'))
    +(u&&o&&o.box&&!conf?' <button class="btn sm ghost" data-act="chk-one" data-k="'+k+'">Ver foto entera</button>':((!u||!(o&&o.box))&&(S.thumbs[slot]||[]).length?' <button class="btn sm ghost" data-act="zoom-inp" data-k="'+slot+'" data-t="'+esc(INL_L[k])+'">Ver foto entera</button>':''))+'</div></div></div>';
   if(k==='kmTotales'&&(!conf||(S.km2&&(S.km2.libre||S.km2.ocup))))h+='<div style="margin:2px 0 8px">'+kmHelper()+'</div>';
@@ -1936,7 +1957,7 @@ function act(a,d){
   case 'reset':init();render();return;
   case 'tab':
    if(S.view==='driver'){S.dtab=d.t;if(d.t==='up'&&S.screen==='sent')S.screen='up';if(d.t==='up'&&S.screen==='home')S.screen='up';}
-   else{S.mtab=d.t;S.openDay=null;S.confirm=null;S.altaOpen=null;if(d.t==='mas')loadMas();if(d.t==='cc'&&LIVE)ccLoad();}
+   else{S.mtab=d.t;S.openDay=null;S.confirm=null;S.altaOpen=null;if(d.t==='mas')loadMas();if(d.t==='cc'&&LIVE)saldoLoad();}
    render();
    if(LIVE&&S.role==='master'&&!S.busy)refresh();
    return;
@@ -2179,7 +2200,6 @@ function applySnap(j){
  if(j.role!=='master'&&!S._histDone&&LIVE){S._histDone=true;setTimeout(function(){call('miHistorico',{}).then(function(c){if(c.ok&&c.dias){S.hist=c.dias;render(true);}});},300);}
  if(j.role!=='master'&&!S._cmpDone&&LIVE){S._cmpDone=true;setTimeout(function(){call('miComparativa',{}).then(function(c){if(c.ok){S.cmp=c;render(true);}});},0);}
  if(j.role==='master'&&!S._posDone){S._posDone=true;restorePos();if(S.mtab==='mas')setTimeout(loadMas,0);}
- if(j.role==='master'&&S.mtab==='cc'&&!S._ccAuto){S._ccAuto=true;setTimeout(ccLoad,300);}
  S.role=j.role;S.view=(j.role==='master'&&!S.mine)?'master':'driver';
  S.me={id:j.me.id,name:j.me.nombre,pct:(j.role==='master'?0:(j.me.pct||45)),status:j.me.estado||'ACTIVO'};
  S.days=(j.days||[]).filter(function(d){return d.key;}).map(mapDay).sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:a.driver-b.driver);});
@@ -2284,6 +2304,7 @@ function sendLive(){
  var n=$('nota');if(n)S.texto=n.value;
  var pend=pendList(),f={};for(var k in S.form)f[k]=S.form[k];
  var inc=[];SLOTS.forEach(function(s){var x=S.slotInc[s.k];if(x&&x.text)inc.push({slot:s.t,text:x.text});});
+ if(tpvDateBad())inc.push({slot:'TPV',text:S.tpvDate?'La fecha del TPV ('+dFmt(S.tpvDate)+') no coincide con el turno ('+dFmt(S.ticketDate||shiftDate())+').':'No se pudo leer la fecha del TPV: hay que mirarla en la foto.'});
  if(S.ticketDate&&dayDiff(S.ticketDate,shiftDate())!==0)inc.push({slot:'Taxímetro',text:'La fecha de inicio del ticket ('+dFmt(S.ticketDate)+') no coincide con la fecha del turno ('+dFmt(shiftDate())+').'});
  var co={chips:S.coche.chips.slice(),texto:S.coche.texto.trim()};var coche=(co.chips.length||co.texto)?co:null;
  var aud=auditData();
@@ -2320,10 +2341,11 @@ function liveAct(a,d){
   case 'login':{var lu=$('lgUser'),lp=$('lgPass'),lr=$('lgRem'),uv=lu?lu.value.trim():'',pv=lp?lp.value:'';S.loginUser=uv;S.loginRem=lr?lr.checked:true;
    if(!uv||!pv){S.regErr='Escribe usuario y contraseña.';render(true);return true;}
    if(S.busy)return true;S.regErr='';S.busy=true;render(true);
-   call('loginUser',{usuario:uv,clave:pv}).then(function(j){
+   var lt=0;function tryLogin(){return call('loginUser',{usuario:uv,clave:pv}).then(function(j){if(!j.ok&&!j.authFail&&(j.error==='OCUPADO'||j.error==='ERROR_SERVIDOR')&&lt++<2)return new Promise(function(rs){setTimeout(rs,1500);}).then(tryLogin);return j;});}
+   tryLogin().then(function(j){
     if(!j.ok){S.busy=false;S.regErr=errMsg(j);render(true);return;}
     setTok(j.token,S.loginRem);try{localStorage.setItem('turnos_rem',S.loginRem?'1':'0');if(S.loginRem)localStorage.setItem('turnos_user',uv);else localStorage.removeItem('turnos_user');}catch(e){}
-    S.regErr='';S.openDay=null;S.reg='done';S._ccAuto=false;if(j.user&&j.user.rol==='MASTER')S.mtab='cc';else S.dtab='home';
+    S.regErr='';S.openDay=null;S.reg='done';S._ccAuto=false;S._posDone=true;if(j.user&&j.user.rol==='MASTER'){S.mtab='cc';S.view='master';}else S.dtab='home';
     return refresh().then(function(){window.scrollTo(0,0);});
    });
    return true;}
@@ -2368,7 +2390,7 @@ function liveAct(a,d){
    S.regErr='';S.busy=true;render(true);
    call('loginMaster',{password:pv}).then(function(j){
     if(!j.ok){S.busy=false;S.regErr=errMsg(j);render(true);return;}
-    setTok(j.token);S.mtab='panel';S.openDay=null;S.reg='done';
+    setTok(j.token);S.mtab='cc';S._posDone=true;S.openDay=null;S.reg='done';
     return refresh().then(function(){window.scrollTo(0,0);});
    });
    return true;}
