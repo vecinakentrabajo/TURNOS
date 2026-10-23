@@ -140,7 +140,10 @@ p{margin:0}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .pick{min-height:44px;padding:6px 12px;border:2px solid var(--line);border-radius:4px;background:var(--surface);font-weight:500}
 .pick[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
-textarea{width:100%;min-height:72px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:8px 10px;resize:vertical}
+textarea{width:100%;min-height:72px;border:2px solid var(--line);border-radius:4px;background:#fff!important;color:#14171A!important;-webkit-text-fill-color:#14171A;padding:8px 10px;resize:vertical}
+textarea::placeholder{color:#6b7280!important;-webkit-text-fill-color:#6b7280}
+.fntab{width:100%;border-collapse:collapse;font-size:13px}.fntab th,.fntab td{border:1px solid var(--line);padding:5px 6px;text-align:right}.fntab th{background:var(--surface);font-weight:700}.fntab td:first-child,.fntab th:first-child{text-align:left}
+.xlg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.xlg>div{border:1px solid var(--line);border-radius:4px;padding:6px 8px;display:flex;flex-direction:column}
 textarea:focus,input[type=text]:focus{outline:none;border-color:var(--ink)}
 .inp{width:100%;min-height:44px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 10px}
 
@@ -318,7 +321,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='v95';
+var APP_V='v96';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -347,8 +350,9 @@ var FIELDS=[
  {g:'Datáfono (TPV)',items:[{k:'tpv',l:'Importe de la foto del datáfono',s:'tpv'}]},
  {g:'FreeNow',items:[
   {k:'freenow',l:'FreeNow total',s:'freenow'},
-  {k:'fnApp',l:'FreeNow cobrado por app',s:'freenow'},{k:'err',l:'Servicios hechos con taxímetro',s:'freenow'},
-  {k:'appTax',l:'APP Taxímetro',s:'freenow'}]}
+  {k:'fnApp',l:'FreeNow cobrado por app',s:'freenow'},{k:'fnEfe',l:'FreeNow cobrado en efectivo / datáfono',s:'freenow'},
+  {k:'taxEfe',l:'Taxímetro en efectivo (hecho con taxímetro, cobrado en efectivo)',s:'freenow'},
+  {k:'appTax',l:'Taxímetro cobrado por app (APP Taxímetro)',s:'freenow'}]}
 ];
 
 /* ---------- lógica ---------- */
@@ -377,6 +381,7 @@ function verify(f,caps,pct,pend,lite){
  var g=function(k){return num(f[k]);}, o=function(k){var v=num(f[k]);return isFinite(v)?v:0;};
  var res={checks:[],t3:null,missing:[],incomplete:[],pend:pend||[],reasons:[],overall:'VERDE'};
  fixTimes(f);
+ (function(){var te=num(f.taxEfe);if(isFinite(te)){var at1=num(f.appTax);f.err=r2(te+(isFinite(at1)?at1:0));}})();
  (function(){var iA=num(f.impresora);if(isFinite(iA)){var nf=num(f.freenow),ne=num(f.err);var tt0=r2(iA+(isFinite(nf)?nf:0)-(isFinite(ne)?ne:0));f.total=tt0;var tp=num(f.tpv);if(isFinite(tp)){var fa0=num(f.fnApp),at0=num(f.appTax);f.efectivo=r2(tt0-tp-(isFinite(fa0)?fa0:0)-(isFinite(at0)?at0:0));}}})();
  if(!lite){
   if(!isFinite(g('kmTotales')))res.incomplete.push('km totales');
@@ -520,7 +525,7 @@ function draftRestore(){
  for(var k in S.slots){if(S.slots[k]==='ok'&&!(S.thumbs[k]||[]).length&&!(k==='servicios'&&S.caps))S.slots[k]='none';}
  render();window.scrollTo(0,0);
 }
-function resetForm(){clearDraft();S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};}
+function resetForm(){clearDraft();S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;}
 function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
@@ -623,11 +628,11 @@ function $(id){return document.getElementById(id);}
 function renderHero(){
  var d=S.view==='driver';
  var photo=TAXI_PHOTO?'<div class="slot"><img alt="Taxi 4200" src="'+TAXI_PHOTO+'"></div>':'<div class="slot">'+I.taxi+'</div>';
- if(LIVE&&!S.role){$('hero').hidden=false;$('heroIn').innerHTML='<div><small>Taxi 4200</small><h1>'+(S.regMode==='code'?'Activa tu móvil':'Entrar')+'</h1></div>'+photo;return;}
+ if(LIVE&&!S.role){$('hero').hidden=false;$('heroIn').innerHTML='<div><small>Taxi 4200 · Versión '+APP_V+'</small><h1>'+(S.regMode==='code'?'Activa tu móvil':'Entrar')+'</h1></div>'+photo;return;}
  var act=d&&drv().status==='ACTIVO';
  var first=act&&S.reg==='code';
  $('hero').hidden=!!(act&&S.reg==='welcome');
- $('heroIn').innerHTML='<div><small>'+(first?'Taxi 4200 · Primera vez':(d?'Taxi 4200 · Conductor':'Taxi 4200 · Control total'))+'</small><h1>'+(first?'Activa tu móvil':(d?'Hola, '+esc(fn1(drv().name)):'Hola, Iván'))+'</h1></div>'+photo+((LIVE&&S.role&&!S.mine)?'<button class="btn sm ghost" style="position:absolute;top:6px;right:8px;min-height:32px;padding:2px 12px;background:var(--surface);z-index:2" data-act="salir">Salir</button>':'');
+ $('heroIn').innerHTML='<div><small>'+(first?'Taxi 4200 · Primera vez':(d?'Taxi 4200 · Conductor':'Taxi 4200 · Control total'))+' · Versión '+APP_V+'</small><h1>'+(first?'Activa tu móvil':(d?'Hola, '+esc(fn1(drv().name)):'Hola, Iván'))+'</h1></div>'+photo+((LIVE&&S.role&&!S.mine)?'<button class="btn sm ghost" style="position:absolute;top:6px;right:8px;min-height:32px;padding:2px 12px;background:var(--surface);z-index:2" data-act="salir">Salir</button>':'');
 }
 
 function renderTabs(){
@@ -942,10 +947,11 @@ function fnScan(start,files){
 function fnNum(v){var x=parseFloat(String(v==null?'':v).replace(',','.'));return isFinite(x)?x:0;}
 function fnRare(x){return !!(x.metodo!=='app'||(!x.taxi&&!x.cerrado));}
 function fnTotals(){
- var L=S.fn||[],t={n:L.length,app:0,efe:0,dat:0,taxi:0,cer:0,sum:0,conf:0,rare:0,prop:0,err:0,fnApp:0,appTax:0,sinImp:0};
+ var L=S.fn||[],t={n:L.length,app:0,efe:0,dat:0,taxi:0,cer:0,sum:0,conf:0,rare:0,prop:0,err:0,fnApp:0,appTax:0,sinImp:0,fnEfe:0,taxEfe:0,nApp:0,nEfe:0,nTaxE:0,nTaxA:0};
  L.forEach(function(x){var a=fnNum(x.imp);if(x.directo){t.dir=(t.dir||0)+1;if(!(a>0))t.sinImp++;return;}t.sum+=a;if(x.metodo==='app')t.app++;else t.efe++;
-  if(x.taxi){t.taxi++;t.err+=a;if(x.metodo==='app')t.appTax+=a;}else if(x.metodo==='app')t.fnApp+=a;
+  if(x.taxi){t.taxi++;t.err+=a;if(x.metodo==='app'){t.appTax+=a;t.nTaxA++;}else t.nTaxE++;}else if(x.metodo==='app'){t.fnApp+=a;t.nApp++;}else{t.fnEfe+=a;t.nEfe++;}
   if(x.cerrado)t.cer++;if(x.conf)t.conf++;if(fnRare(x))t.rare++;if(!(a>0))t.sinImp++;});
+ t.taxEfe=r2(t.err-t.appTax);t.fnEfe=r2(t.fnEfe);
  return t;
 }
 function fnSync(){
@@ -954,17 +960,18 @@ function fnSync(){
  if(!t.n)return;
  S.ocr=S.ocr||{};
  function put(k,v){var o=S.ocr[k];if(o&&o.typed)return;S.form[k]=r2(v);}
- if(t.sum>0){put('freenow',t.sum);put('fnApp',t.fnApp);put('err',t.err);put('appTax',t.appTax);}
+ if(t.sum>0){put('freenow',t.sum);put('fnApp',t.fnApp);put('err',t.err);put('appTax',t.appTax);put('fnEfe',t.fnEfe);put('taxEfe',t.taxEfe);}
 }
 function fnSumHtml(){
  var t=fnTotals();if(!t.n)return '';
  return '<span class="chip ink">'+t.n+' servicio'+(t.n>1?'s':'')+'</span><span class="chip mute">App '+t.app+'</span><span class="chip '+(t.efe?'warn':'mute')+'">Efectivo/datáfono '+t.efe+'</span><span class="chip mute">Taxímetro '+t.taxi+'</span><span class="chip mute">Precio cerrado '+t.cer+'</span><span class="chip ok">Total '+eur(t.sum)+'</span>'+(t.conf===t.n?'<span class="chip solid">✓ Todo comprobado</span>':'<span class="chip warn">Sin comprobar: '+(t.n-t.conf)+'</span>');
 }
 var FNLOGO='<span class="fnlogo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 6l8 12 8-12" fill="none" stroke="#e3212b" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+function fnTag(x){var a=fnNum(x.imp);if(!(a>0))return '';return '<div class="mono" style="font-weight:700">'+eur(a)+' · '+(x.directo?'cobro directo':(x.metodo==='app'?'App':'Efectivo / datáfono'))+(x.directo?'':(x.cerrado?' (precio cerrado)':' (taxímetro)'))+'</div>';}
 function fnCard(x,i,u){
  var rare=fnRare(x),cls='fnc'+(x.conf?' done':(rare?' rare':''));
  function pk(act,k,v,txt,on){return '<button class="pick" data-act="'+act+'" data-i="'+i+'" data-fk="'+k+'" data-v="'+v+'" aria-pressed="'+(on?'true':'false')+'">'+txt+'</button>';}
- var h='<div class="'+cls+'"><div class="top2">'+(u?'<img alt="Captura del servicio '+(i+1)+' (toca para ver grande)" data-act="fn-zoom" data-i="'+i+'" src="'+u+'">':'')+'<div class="grow"><b>Servicio '+(i+1)+'</b><div class="small muted">'+(x.conf?'Comprobado':(rare?'Compruébalo':'Normal'))+'</div></div><button class="btn sm ghost" data-act="rm" data-k="freenow" data-i="'+i+'" aria-label="Quitar este servicio">'+I.no+'</button></div>';
+ var h='<div class="'+cls+'"><div class="top2">'+(u?'<img alt="Captura del servicio '+(i+1)+' (toca para ver grande)" data-act="fn-zoom" data-i="'+i+'" src="'+u+'">':'')+'<div class="grow"><b>Servicio '+(i+1)+'</b>'+fnTag(x)+'<div class="small muted">'+(x.conf?'Comprobado':(rare?'Compruébalo':'Normal'))+'</div></div><button class="btn sm ghost" data-act="rm" data-k="freenow" data-i="'+i+'" aria-label="Quitar este servicio">'+I.no+'</button></div>';
  if(x.reading)h+='<div class="small muted">Leyendo la captura…</div>';
  else if(x.directo)h+='<div class="small"><span class="chip warn">Cobro directo al conductor (pago efectivo/tarjeta): NO es ingreso de FreeNow, no se suma</span></div>';
  else if(!x.ocr&&String(x.imp)===''&&u)h+='<div class="banner bad"><b>Tengo dudas con esta captura</b><span>No he podido leer el importe con seguridad. Mira la captura y elige uno de los importes de abajo o escríbelo.</span></div>';
@@ -1027,9 +1034,9 @@ function fieldHtml(f){
  if(typeof v==='number')v=String(v).replace('.',',');
  var cd='',oo=S.ocr&&S.ocr[f.k];
  if(LIVE&&oo&&!oo.ok&&!oo.conf&&oo.cands&&oo.cands.length>=1)cd='<div class="small" style="grid-column:1/-1"><b>'+(f.k==='impresora'?'¿Cuál es el Importe TOTAL del ticket?':'¿Es uno de estos?')+'</b> Toca el correcto, o escríbelo.</div><div class="chips" style="grid-column:1/-1">'+oo.cands.slice(0,4).map(function(x){return '<button class="pick" data-act="pick-cand" data-k="'+f.k+'" data-v="'+x+'">'+String(x).replace('.',',')+'</button>';}).join('')+'</div>';
- return '<div class="field"><label class="nm" for="f_'+f.k+'">'+f.l+'</label><input id="f_'+f.k+'" data-f="'+f.k+'" type="text" '+(f.time?'placeholder="hh:mm"':'inputmode="decimal"')+' value="'+esc(v)+'" autocomplete="off"><div class="src">'+src+'</div>'+cd+(LIVE&&!S.mine?fincHtml(f.k):'')+(LIVE&&f.k==='kmTotales'?kmHelper():'')+(LIVE&&f.k==='tarifa3Decl'?'<div style="grid-column:1/-1">'+t3Html()+'</div>':'')+'</div>';
+ return '<div class="field"><label class="nm" for="f_'+f.k+'">'+f.l+'</label><input id="f_'+f.k+'" data-f="'+f.k+'" type="text" '+(f.time?'placeholder="hh:mm"':'inputmode="decimal"')+' value="'+esc(v)+'" autocomplete="off"><div class="src">'+src+'</div>'+cd+(LIVE&&!S.mine?fincHtml(f.k):'')+(LIVE&&f.k==='kmTotales'?kmHelper():'')+(LIVE&&f.k==='tarifa3Decl'?'<div style="grid-column:1/-1">'+(S.mine?'':t3Chips())+t3Html()+'</div>':'')+'</div>';
 }
-function pendList(){var p=[];SLOTS.forEach(function(s){if(S.slots[s.k]==='dudosa')p.push(s.t);});if(LIVE&&!S.mine&&auditData().some(function(x){return x.cambiado;}))p.push('Datos escritos a mano');if(tpvDateBad())p.push('Fecha del TPV');if(LIVE&&!S.mine&&S.ticketDate&&dayDiff(S.ticketDate,shiftDate())!==0)p.push('Fecha del ticket');return p;}
+function pendList(){var p=[];if(LIVE&&!S.mine&&S.slots.taximetro==='ok'&&!t3Picked())p.push('Tarifa 3 sin confirmar');SLOTS.forEach(function(s){if(S.slots[s.k]==='dudosa')p.push(s.t);});if(LIVE&&!S.mine&&auditData().some(function(x){return x.cambiado;}))p.push('Datos escritos a mano');if(tpvDateBad())p.push('Fecha del TPV');if(LIVE&&!S.mine&&S.ticketDate&&dayDiff(S.ticketDate,shiftDate())!==0)p.push('Fecha del ticket');return p;}
 function liveHtml(){
  var r=verify(S.form,S.caps,drv().pct,pendList(),S.mine);
  var map={VERDE:['ok','Verde: todo cuadra'],ROJO:['bad','Rojo: '+(r.reasons[0]||'')],PENDIENTE:['warn','Pendiente de confirmar por Iván'],BLOQUEADO:['bad','Ticket incompleto: falta '+r.incomplete.join(', ')],FALTAN:['warn','Faltan datos: '+r.missing.join(', ')]}[r.overall];
@@ -1049,22 +1056,35 @@ function driverConfirm(){
  var cf=S.form,cfT=num(cf.total),cfE=num(cf.efectivo);
  h+='<div class="card stack"><h3 style="margin:0">Lo calcula la app (no tienes que escribir nada)</h3><div class="row sp"><span>Total recaudado (ticket + FreeNow)</span><b>'+(isFinite(cfT)?eur(cfT):'—')+'</b></div><div class="row sp"><span>Efectivo que debes llevar</span><b>'+(isFinite(cfE)?eur(cfE):'—')+'</b></div><span class="small muted">Efectivo = total − datáfono − pagos por app.</span></div>';
  h+='<div class="card row sp"><span class="small muted">Ahora mismo</span><span id="live">'+liveHtml()+'</span></div>';
+ h+=noteCard();
  h+='<div class="row"><button class="btn ghost" data-act="back-up">Atrás</button><button class="btn ok grow" data-act="to-result">✓ Todo correcto</button></div><p class="small muted" style="text-align:center">Si algo no es así, cámbialo arriba: Iván recibirá un aviso de lo que has cambiado.</p>';
  return h;
 }
 function resumenHtml(){
- var f=S.form,t=fnTotals();
- function row(l,v,ok){return '<div class="row sp"><span>'+l+'</span><b class="mono">'+v+'</b></div>';}
+ var f=S.form,t=fnTotals(),r=verify(f,S.caps,drv().pct,pendList(),S.mine);
+ function row(l,v){return '<div class="row sp"><span>'+l+'</span><b class="mono">'+v+'</b></div>';}
  function ev(k){var v=f[k];return (v===''||v==null)?'—':eur(num(v));}
- var km=num(f.kmTotales);
- return '<div class="card stack"><h3>Esto es lo que se guarda</h3>'
-  +row('Taxímetro · total del ticket',ev('impresora'))
-  +row('Taxímetro · km totales',isFinite(km)?String(Math.round(km*10)/10).replace('.',',')+' km':'—')
-  +row('Taxímetro · horario',(f.horaIni||'—')+' a '+(f.horaFin||'—'))
-  +row('TPV',ev('tpv'))
-  +row('FreeNow · '+(t.n?t.n+' servicio'+(t.n>1?'s':''):'sin servicios'),t.n?eur(t.sum):'—')
-  +(t.taxi?row('Servicios FreeNow hechos con taxímetro',eur(t.err)):'')
+ function box(l,v){return '<div><span class="label">'+l+'</span><b class="mono">'+v+'</b></div>';}
+ var km=num(f.kmTotales),tp0=num(f.tpv),tarj=isFinite(tp0)?r2(tp0+(num(f.fnApp)||0)+(num(f.appTax)||0)):'';
+ var h='<div class="card stack"><h3>Esto es lo que se guarda</h3>'
+  +'<div class="xlg">'+box('TOTAL',ev('total'))+box('IMPRESORA',ev('impresora'))+box('FREENOW',ev('freenow'))+box('TAXÍMETRO ERROR',ev('err'))+'</div>'
+  +'<div class="xlg">'+box('Has ganado ('+drv().pct+' %)',eur(r.parte))+box('Efectivo',ev('efectivo'))+box('Cobras',eur(r.cobras))+'</div>'
+  +'<div class="xlg">'+box('TARJETAS (TPV)',ev('tpv'))+box('APP',ev('fnApp'))+box('APP Taxímetro',ev('appTax'))+box('Total tarjetas',tarj===''?'—':eur(tarj))+'</div>'
+  +row('EFECTIVO',ev('efectivo'))
+  +'<h3 style="margin:6px 0 0">FreeNow · '+(t.n?t.n+' servicio'+(t.n>1?'s':''):'sin servicios')+'</h3>'
+  +'<table class="fntab"><tr><th></th><th>App</th><th>Efectivo</th><th>Taxím. efect.</th><th>Taxím. app</th><th>Total</th></tr>'
+  +'<tr><td>Importe</td><td>'+eur(t.fnApp)+'</td><td>'+eur(t.fnEfe)+'</td><td>'+eur(t.taxEfe)+'</td><td>'+eur(t.appTax)+'</td><td><b>'+eur(t.sum)+'</b></td></tr>'
+  +'<tr><td>Servicios</td><td>'+t.nApp+'</td><td>'+t.nEfe+'</td><td>'+t.nTaxE+'</td><td>'+t.nTaxA+'</td><td><b>'+t.n+'</b></td></tr></table>'
+  +(t.dir?'<span class="small muted">Además '+t.dir+' cobro'+(t.dir>1?'s':'')+' directo'+(t.dir>1?'s':'')+' al conductor: no suma.</span>':'')
+  +'<h3 style="margin:6px 0 0">Ticket del taxímetro</h3>'
+  +row('Km totales',isFinite(km)?String(Math.round(km*10)/10).replace('.',',')+' km':'—')
+  +row('Horario',(f.horaIni||'—')+' a '+(f.horaFin||'—'))
+  +row('Servicios de Tarifa 3',String(r.t3.decl)+(r.t3.ok?'':' (en FreeNow: '+r.t3.caps+')'))
   +'<span class="small muted">Si algo no es así, pulsa «Corregir».</span></div>';
+ return h;
+}
+function noteCard(){
+ return '<div class="card stack"><h3 style="margin:0">Comunicar incidencia</h3><p class="small muted">Si algo no cuadra o quieres avisar a Iván, elige un motivo o cuéntalo en una línea. Es opcional.</p><div class="chips">'+MOTIVOS.map(function(m){return '<button class="pick" data-act="motivo" data-m="'+esc(m)+'" aria-pressed="'+(S.motivos.indexOf(m)>-1)+'">'+m+'</button>';}).join('')+'</div><textarea id="nota" placeholder="Cuéntalo en una línea (opcional)" aria-label="Comunicar incidencia a Iván">'+esc(S.texto)+'</textarea></div>';
 }
 function driverResult(){
  var r=verify(S.form,S.caps,drv().pct,pendList(),S.mine);
@@ -1081,9 +1101,7 @@ function driverResult(){
  h+=resumenHtml();
  if(r.pend.length)h+='<div class="hint"><b>Pendiente de confirmar por Iván:</b> '+r.pend.map(esc).join(', ')+'.</div>';
  var canSend=true;
- if(canSend&&r.overall!=='VERDE'){
-  h+='<div class="card stack"><h3>Nota para Iván</h3><div class="chips">'+MOTIVOS.map(function(m){return '<button class="pick" data-act="motivo" data-m="'+esc(m)+'" aria-pressed="'+(S.motivos.indexOf(m)>-1)+'">'+m+'</button>';}).join('')+'</div><textarea id="nota" placeholder="Si quieres, cuéntalo en una línea (opcional)" aria-label="Nota para Iván">'+esc(S.texto)+'</textarea></div>';
- }
+ if(canSend)h+=noteCard();
  if(S.dupAsk)h+='<div class="banner ink"><b>Ya hay un turno enviado ese día</b><span>¿Es un segundo turno distinto del mismo día?</span><div class="row"><button class="btn sm ghost" style="background:var(--surface)" data-act="second-no">No</button><button class="btn sm pri grow" data-act="second-yes">Sí, es otro turno</button></div></div>';
  if(S.sendErr)h+='<div class="banner bad"><span>'+esc(S.sendErr)+'</span></div>';
  if(S.busy)h+=thinkHtml('Un segundo, estoy pensando…<br><span style="font-weight:400">Subiendo las fotos y comprobando.</span>','<button class="btn sm ghost" data-act="wait-skip">Seguir sin esperar</button>');
@@ -1150,7 +1168,7 @@ function driverSent(){
 
 /* máster */
 function dayRow(d,showDriver){
- return '<button class="li" data-act="open" data-id="'+d.id+'"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted">'+esc(uname(d.driver))+' · parte '+eur(d.res.parte)+'</div></div>'+cargaChip(d)+chip(d.estado,d.accepted)+'</button>';
+ return '<button class="li" data-act="open" data-id="'+d.id+'"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted">'+esc(uname(d.driver))+(isTest(d.driver)?' · PRUEBA':'')+' · parte '+eur(d.res.parte)+'</div></div>'+cargaChip(d)+chip(d.estado,d.accepted)+'</button>';
 }
 function mailHtml(d){
  var why=d.res.reasons.length?d.res.reasons.join('; '):(d.pend.length?'Pendiente de confirmar: '+d.pend.join(', '):'');
@@ -1209,10 +1227,13 @@ function masterDays(){
 /* ===== Más: Mes, Excel, Facturas (solo Iván) ===== */
 var DASH_URL='https://drive.google.com/file/d/1xJQHEnmjILE7AFnfbFWp6iQTLv9Y20hC/view';
 var FAC_TIPOS=['Taller','Gasoil','Seguro','Gestoría','Otro'];
+function gestionCard(){
+ return '<div class="card stack"><h3 style="margin:0">Fotos y copias de seguridad</h3><p class="small muted">Compartir las fotos te deja abrirlas desde vecinaken@gmail.com (solo ver). La copia guarda el diario entero en Drive; además se hace sola una vez al día (se guardan las últimas 14).</p>'+(S.gMsg?'<div class="hint">'+esc(S.gMsg)+'</div>':'')+'<div class="row" style="flex-wrap:wrap"><button class="btn sm yel" data-act="fotos-share">Compartir fotos conmigo</button><button class="btn sm ghost" data-act="bk-now">Copia de seguridad ahora</button></div></div>';
+}
 function masterMas(){
  var sub=S.msub||'mes';
  var h='<h2>Gestión</h2><div class="chips" role="tablist">'+[['mes','Mes'],['excel','Excel'],['fac','Facturas']].map(function(x){return '<button class="pick" role="tab" data-act="msub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
- return h+({mes:masMes,excel:masExcel,fac:masFac,cc:masCC}[sub]||masMes)();
+ return h+({mes:masMes,excel:masExcel,fac:masFac,cc:masCC}[sub]||masMes)()+(sub==='excel'?gestionCard():'');
 }
 function ymAdd(ym,n){var a=ym.split('-'),d=new Date(+a[0],+a[1]-1+n,1);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}
 var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1246,7 +1267,8 @@ function masMes(){
  h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="tab" data-t="cc">Abrir Centro de control</button>';
  return h;
 }
-function ccMonth(){var m=TODAY.slice(0,7),o={n:0,fm:0,fi:0,km:0,dm:0};S.days.forEach(function(d){if(d.date.slice(0,7)!==m)return;var t=num(d.f.total)||0;if(d.driver===1)o.fi+=t;else{o.fm+=t;o.dm++;}o.km+=num(d.f.kmTotales)||0;o.n++;});return o;}
+function isTest(uid){return (S.users||[]).some(function(u){return u.id===uid&&u.prueba;});}
+function ccMonth(){var m=TODAY.slice(0,7),o={n:0,fm:0,fi:0,km:0,dm:0};S.days.forEach(function(d){if(d.date.slice(0,7)!==m||isTest(d.driver))return;var t=num(d.f.total)||0;if(d.driver===1)o.fi+=t;else{o.fm+=t;o.dm++;}o.km+=num(d.f.kmTotales)||0;o.n++;});return o;}
 function debtMortada(){
  if(!LIVE)return '—';var q=S.saldo;if(!q){saldoLoad();return 'Leyendo el Excel…';}
  if(!q.ok||!q.conectado)return 'No disponible';var v=(q.panel!=null)?q.panel:q.suma;if(v==null)return 'No disponible';
@@ -1387,8 +1409,27 @@ function loadMas(){
  if(sub==='mes'){var ym=S.mmes||(TODAY||iso(new Date())).slice(0,7);call('getFnMes',{mes:ym}).then(function(j){S.fnm=S.fnm||{};if(j.ok)S.fnm[ym]=j.comision;render(true);});call('excelMes',{mes:ym}).then(function(j){S.xlMes=S.xlMes||{};if(j.ok)S.xlMes[ym]=j;render(true);});}
  if(sub==='fac'){call('listInvoices',{}).then(function(j){if(j.ok)S.facs=j.items;render(true);});}
 }
+function dayOf(d){return S.days.filter(function(x){return x.id===+d.id;})[0];}
 function masAct(a,d){
  switch(a){
+  case 'flash-x':S.flash='';render(true);return true;
+  case 'inst-no':try{localStorage.setItem('turnos_inst','1');}catch(e){}S.instHelp=false;S.instDone=true;render(true);return true;
+  case 'inst-yes':{try{localStorage.setItem('turnos_inst','1');}catch(e){}if(window.__bip){try{window.__bip.prompt();}catch(e){}window.__bip=null;S.instDone=true;}else S.instHelp=true;render(true);return true;}
+  case 'col-now':colaFlush();return true;
+  case 'u-test':doLive('setUserTest',{uid:+d.id,test:+d.v===1});return true;
+  case 'fotos-share':doLive('compartirFotos',{email:'vecinaken@gmail.com'},function(j){S.gMsg='Fotos compartidas con '+j.email+' (solo ver). Ya puedes abrirlas con esa cuenta.';});return true;
+  case 'bk-now':doLive('backupAhora',{},function(j){S.gMsg='Copia hecha en Drive: '+j.nombre;});return true;
+  case 'av-ok':{var dd1=dayOf(d);if(!dd1)return true;doLive('editarDia',{key:dd1.key,okIdx:[+d.i],motivo:'Aviso revisado'},function(){S.flash='Aviso marcado como revisado.';});return true;}
+  case 'ed-open':{var dd2=dayOf(d);if(dd2){S.edit=edInit(dd2);S.del=null;}render(true);return true;}
+  case 'ed-cancel':S.edit=null;render(true);return true;
+  case 'ed-save':{var dd3=dayOf(d);if(!dd3||!S.edit)return true;var ch={},n=0;Object.keys(S.edit.f).forEach(function(k){if(String(S.edit.f[k])!==String(S.edit.o[k])){ch[k]=String(S.edit.f[k]).replace(',','.');n++;}});
+   if(!n){S.edit.err='No has cambiado ningún dato.';render(true);return true;}
+   if((S.edit.motivo||'').trim().length<3){S.edit.err='Escribe el motivo del cambio.';render(true);return true;}
+   var mot=S.edit.motivo;doLive('editarDia',{key:dd3.key,form:ch,motivo:mot},function(j){S.edit=null;S.flash='Corregido y registrado.'+(j.volcado?' OJO: este día ya estaba en el Excel; corrígelo allí también.':'');});return true;}
+  case 'del-ask':S.del={id:+d.id,motivo:'',err:''};S.edit=null;render(true);return true;
+  case 'del-no':S.del=null;render(true);return true;
+  case 'del-yes':{var dd4=dayOf(d);if(!dd4||!S.del)return true;if((S.del.motivo||'').trim().length<3){S.del.err='Escribe el motivo.';render(true);return true;}
+   var m4=S.del.motivo;doLive('eliminarDia',{key:dd4.key,motivo:m4},function(j){S.del=null;S.openDay=null;S.flash='Turno eliminado y guardado en APP_ELIMINADOS.'+(j.volcado?' OJO: ese día ya estaba pasado al Excel: bórralo allí tú (yo no lo toco).':'');});return true;}
   case 'saldo-reload':saldoLoad();return true;
   case 'saldo-tog':S.saldoOpen=!S.saldoOpen;render(true);return true;
   case 'carga-ver':case 'carga-run':{var solo=(a==='carga-ver');S.busy=true;S.cargaMsg='';render(true);call('cargarHistorico',{mes:'2026-10',uid:2,lote:1,soloVer:solo}).then(function(j){S.busy=false;if(j.ok){S.cargaRes=j;S.cargaMsg=solo?('Vista previa: se cargarían '+j.n+' día'+(j.n===1?'':'s')+'. Todavía no se ha escrito nada.'):('Cargados '+j.n+' día'+(j.n===1?'':'s')+' con la marca «'+j.marca+'».');if(!solo){refresh();}}else if(!j.authFail)S.cargaMsg=j.msg||errMsg(j);render(true);});return true;}
@@ -1422,18 +1463,37 @@ function masAct(a,d){
  }
  return false;
 }
+var ED_L={impresora:'Total ticket impresora',kmTotales:'Km totales',horaIni:'Hora inicio',horaFin:'Hora fin',tarifa3Decl:'Servicios de Tarifa 3 (ticket)',tpv:'TPV',freenow:'FreeNow total',fnApp:'FreeNow cobrado por app',fnEfe:'FreeNow efectivo / datáfono',taxEfe:'Taxímetro en efectivo',appTax:'Taxímetro cobrado por app'};
+function edInit(d){
+ var f=d.f,o={};Object.keys(ED_L).forEach(function(k){var v=f[k];if(k==='taxEfe'&&(v==null||v==='')){var e=num(f.err),a=num(f.appTax);v=isFinite(e)?r2(e-(isFinite(a)?a:0)):'';}if(k==='fnEfe'&&(v==null))v='';o[k]=(v==null)?'':String(v).replace('.',',');});
+ var c={};for(var k in o)c[k]=o[k];return {id:d.id,o:o,f:c,motivo:'',err:''};
+}
+function edHtml(d){
+ if(!LIVE)return '';
+ var h='<div class="card stack"><h3 style="margin:0">Corregir o eliminar turno completo</h3>';
+ if(d.volcado)h+='<div class="hint">Este día ya está pasado al Excel ('+esc(d.volcado)+'). Si lo cambias o lo borras aquí, el Excel no se toca: hazlo tú allí también.</div>';
+ if(S.edit&&S.edit.id===d.id){
+  h+=Object.keys(ED_L).map(function(k){return '<div class="field"><label class="nm" for="ed_'+k+'">'+ED_L[k]+'</label><input id="ed_'+k+'" data-ed="'+k+'" type="text" inputmode="'+(k==='horaIni'||k==='horaFin'?'numeric':'decimal')+'" value="'+esc(S.edit.f[k])+'" autocomplete="off"></div>';}).join('');
+  h+='<input class="inp" id="edMot" type="text" maxlength="200" placeholder="Motivo del cambio (obligatorio)" value="'+esc(S.edit.motivo)+'" autocomplete="off">'+(S.edit.err?'<span class="small" style="color:var(--bad,#b00020)">'+esc(S.edit.err)+'</span>':'')+'<div class="row"><button class="btn ghost" data-act="ed-cancel">Cancelar</button><button class="btn pri grow" data-act="ed-save" data-id="'+d.id+'">Guardar corrección</button></div><span class="small muted">Queda registrado: qué había, qué hay ahora, quién y cuándo.</span>';
+ }else h+='<button class="btn sm yel" style="align-self:flex-start" data-act="ed-open" data-id="'+d.id+'">Corregir datos</button>';
+ if(S.del&&S.del.id===d.id){
+  h+='<div class="banner bad"><b>¿Eliminar este turno completo?</b><span>Se borra de la app. Se guarda una copia en la hoja APP_ELIMINADOS con quién, cuándo y el motivo.</span><input class="inp" id="delMot" type="text" maxlength="200" placeholder="Motivo (obligatorio)" value="'+esc(S.del.motivo)+'" autocomplete="off">'+(S.del.err?'<span class="small">'+esc(S.del.err)+'</span>':'')+'<div class="row"><button class="btn sm ghost" style="background:var(--surface)" data-act="del-no">No</button><button class="btn sm pri grow" data-act="del-yes" data-id="'+d.id+'">Sí, eliminar</button></div></div>';
+ }else h+='<button class="btn sm bad" style="align-self:flex-start" data-act="del-ask" data-id="'+d.id+'">Eliminar turno</button>';
+ if(d.hist&&d.hist.length)h+='<span class="label">Registro de cambios</span>'+d.hist.slice().reverse().map(function(p){return '<div class="small"><b>'+esc(p.cuando)+'</b> · '+esc(p.quien||'')+(p.tipo?' · '+esc(p.tipo):'')+(p.motivo?' · '+esc(p.motivo):'')+'</div>';}).join('');
+ return h+'</div>';
+}
 function masterDetail(){
  var d=S.days.filter(function(x){return x.id===S.openDay;})[0];
  if(!d)return '';
  var h='<button class="btn sm ghost" data-act="close" style="align-self:flex-start">Volver</button><div class="row sp"><h2>'+dw(d.date)+' '+dl(d.date)+'</h2>'+chip(d.estado,d.accepted)+'</div>';
  h+='<p class="muted">Turno de '+esc(uname(d.driver))+' · '+d.f.horaIni+' a '+d.f.horaFin+' · '+Math.round(num(d.f.kmTotales))+' km</p>';
- if(d.hist&&d.hist.length)h+='<div class="hint">Día corregido tras tu autorización. La versión anterior queda guardada ('+d.hist.length+').</div>';
  h+=receipt(d.res);
  h+='<div class="card kv"><div><span class="label">Total</span><b class="mono">'+eur(num(d.f.total))+'</b></div><div><span class="label">Parte '+esc(fn1(uname(d.driver)))+'</span><b class="mono">'+eur(d.res.parte)+'</b></div><div><span class="label">Efectivo</span><b class="mono">'+eur(num(d.f.efectivo))+'</b></div><div><span class="label">Cobras</span><b class="mono">'+eur(d.res.cobras)+'</b></div></div>';
  if(d.carga)h+='<div class="banner ink"><b>CARGADO POR CLAUDE · LOTE '+esc(d.carga.lote)+'</b><span class="small">Este día no lo subió el conductor: se copió del Excel de trabajo el '+esc(String(d.carga.cuando||'').slice(0,16))+'. No tiene fotos.</span></div>';
  if(d.motivoAcep&&!d.carga)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
- if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x){return '<p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
+ if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x,ix){return '<div class="stack" style="border-top:1px solid var(--line);padding-top:6px"><p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>'+(x.ok?'<span class="chip ok">✓ Revisado por ti</span>':(LIVE?'<div class="row"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+ix+'">Está bien</button><button class="btn sm ghost" data-act="ed-open" data-id="'+d.id+'">Corregir</button></div>':''))+'</div>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
+h+=edHtml(d);
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
  if(d.pend.length)h+='<div class="hint">Pendiente de confirmar: '+d.pend.map(esc).join(', ')+'.</div>';
  if(LIVE&&d.carpeta)h+='<a class="btn sm ghost" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Ver fotos en Drive</a>';
@@ -1458,12 +1518,14 @@ function masterUsers(){
  S.users.forEach(function(u){
   var cls={ACTIVO:'ok',BLOQUEADO:'bad',ARCHIVADO:'mute',LIBRE:'mute','POR ACTIVAR':'warn'}[u.status]||'mute';
   h+='<div class="card stack"><div class="row sp"><div class="row"><span class="disp" style="font-size:28px;min-width:30px">'+u.id+'</span><div><b>'+(u.name?esc(u.name):'Hueco libre')+'</b><div class="small muted">'+(u.role==='MASTER'?'Máster · control total':(u.status==='LIBRE'?'Sin asignar':'Conductor · '+u.pct+' %'))+'</div></div></div><span class="chip '+cls+'">'+u.status+'</span></div>';
+  if(u.prueba)h+='<span class="chip warn" style="align-self:flex-start">PRUEBA · no cuenta en los resúmenes</span>';
   if(u.code)h+='<div class="mail"><span class="label">Código de alta, un solo móvil</span><div class="mono"><b>'+esc(u.code)+'</b></div></div>';
   if(u.role!=='MASTER'&&u.status!=='LIBRE'){
    var on=(u.status==='ACTIVO'||u.status==='POR ACTIVAR');
    if(u.device)h+='<div class="row sp"><span class="small muted">Móvil vinculado: '+esc(u.device)+'</span><button class="btn sm ghost" data-act="unlink" data-id="'+u.id+'">Desvincular</button></div>';
    else if(LIVE&&on&&!u.code)h+='<div class="row sp"><span class="small muted">El código ya no se puede ver.</span><button class="btn sm ghost" data-act="unlink" data-id="'+u.id+'">Código nuevo</button></div>';
    if(LIVE&&on){S.passMsg=S.passMsg||{};h+='<div class="stack"><span class="small muted">Usuario para entrar: <b>'+esc(fn1(u.name))+'</b></span><div class="row"><input class="inp" id="pw_'+u.id+'" type="text" placeholder="Contraseña nueva (mín. 4)" autocomplete="off"><button class="btn sm pri" data-act="pass-set" data-id="'+u.id+'">Poner contraseña</button></div>'+(S.passMsg[u.id]?'<span class="small">'+esc(S.passMsg[u.id])+'</span>':'')+'</div>';}
+   h+='<div class="row sp"><span class="small muted">'+(u.prueba?'Usuario de prueba':'Usuario real')+'</span><button class="btn sm ghost" data-act="u-test" data-id="'+u.id+'" data-v="'+(u.prueba?0:1)+'">'+(u.prueba?'Quitar marca de prueba':'Marcar como prueba')+'</button></div>';
    if(on){
     if(S.confirm===u.id)h+='<div class="banner bad"><b>¿Bloquear a '+esc(u.name)+'?</b><span>Dejará de poder entrar, subir y consultar. Su histórico se conserva.</span><div class="row"><button class="btn sm" style="background:var(--surface)" data-act="cancel">Cancelar</button><button class="btn sm pri" data-act="block-yes" data-id="'+u.id+'">Sí, bloquear</button></div></div>';
     else h+='<button class="btn sm bad" style="align-self:flex-start" data-act="block" data-id="'+u.id+'">Bloquear acceso</button>';
@@ -1480,6 +1542,35 @@ function masterUsers(){
  return h+'</div>';
 }
 
+function instNeeded(){
+ try{if(localStorage.getItem('turnos_inst'))return false;}catch(e){}
+ try{if((window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone)return false;}catch(e){}
+ return !S.instDone;
+}
+function instCard(){
+ var ios=/iphone|ipad|ipod/i.test(navigator.userAgent||'');
+ var h='<div class="card stack"><h3 style="margin:0">¿Cómo quieres usar la app?</h3><p class="small muted">Puedes seguir en el navegador, o instalarla para abrirla desde un icono como cualquier app. Funciona igual de las dos formas.</p>';
+ if(S.instHelp)return h+'<div class="hint">'+(ios?'En iPhone: abre esta página en Safari, pulsa Compartir (el cuadrado con la flecha) y elige «Añadir a pantalla de inicio».':'En Android: abre el menú ⋮ del navegador y pulsa «Instalar aplicación» o «Añadir a pantalla de inicio».')+'</div><button class="btn pri" data-act="inst-no">Entendido</button></div>';
+ return h+'<div class="row"><button class="btn ghost grow" data-act="inst-no">Seguir en el navegador</button><button class="btn pri grow" data-act="inst-yes">Instalar app</button></div></div>';
+}
+function colaBanner(){return '<div class="banner warn"><b>Tienes '+S.colaN+' turno'+(S.colaN>1?'s':'')+' guardado'+(S.colaN>1?'s':'')+' sin enviar</b><span>Se envía solo en cuanto haya señal, con la app abierta.'+(S.colaErr?' '+esc(S.colaErr):'')+'</span><button class="btn sm yel" style="align-self:flex-start" data-act="col-now">Enviar ahora</button></div>';}
+function colaCount(){return idb('get','cola').then(function(a){S.colaN=(a&&a.length)||0;});}
+function colaAdd(req){return idb('get','cola').then(function(a){a=a||[];a.push({t:Date.now(),req:req});return idb('put','cola',a);}).then(colaCount);}
+function colaFlush(){
+ if(!LIVE||S.colaBusy||!getTok())return;
+ S.colaBusy=true;
+ function next(){
+  return idb('get','cola').then(function(a){
+   if(!a||!a.length){S.colaN=0;S.colaBusy=false;return refresh();}
+   return call('submitShift',a[0].req).then(function(j){
+    if(j.ok||j.error==='DUPLICADO'){a.shift();S.colaErr='';return idb('put','cola',a).then(function(){S.flash='Turno guardado sin señal: ya enviado a Iván.';return next();});}
+    S.colaBusy=false;S.colaN=a.length;if(j.error!=='SIN_RED')S.colaErr='No se pudo enviar: '+errMsg(j);render(true);
+   });
+  });
+ }
+ next();
+}
+try{window.addEventListener('online',colaFlush);window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;});}catch(e){}
 function renderMain(){
  var h='';
  if(LIVE&&(S.loading||S.netFail||!S.role)){
@@ -1509,6 +1600,9 @@ function renderMain(){
   if(S.busy&&S.view==='master')h=thinkHtml('Un segundo, estoy pensando…','<button class="btn sm ghost" data-act="wait-skip">Seguir sin esperar</button>')+h;
  }
 
+ if(LIVE&&S.role&&!S.openDay&&((S.view==='driver'&&S.dtab==='home')||(S.view==='master'&&S.mtab==='cc'))&&instNeeded())h=instCard()+h;
+ if(LIVE&&S.colaN>0)h=colaBanner()+h;
+ if(S.flash)h='<div class="banner ink"><b>'+esc(S.flash)+'</b><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="flash-x">Cerrar</button></div>'+h;
  if(S.draftOffer&&!draftHas())h=draftBanner()+h;
  if(S.camTip)h=camTipHtml()+h;
  if(S.pickLost)h='<div class="banner ink"><b>El móvil cerró la app mientras hacías la foto</b><span>He recuperado lo que llevabas. Haz otra vez esa última foto.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="pick-x">Entendido</button></div>'+h;
@@ -1587,8 +1681,9 @@ var LECTOR=(function(){var root={};
  function hhmm(a,b){a=+a;b=+b;if(!(a>=0&&a<24&&b>=0&&b<60))return null;return (a<10?'0':'')+a+':'+(b<10?'0':'')+b;}
  /* un texto OCR → candidatos por campo */
  function ticketCand(t){
-  var c={horaIni:[],horaFin:[],libre:[],ocup:[],total:[],totalP:[],fecha:[],t3:[],tk:[],hdr:[],rend:[]},m,L=t.split(/\n/);
+  var c={horaIni:[],horaFin:[],libre:[],ocup:[],total:[],totalP:[],fecha:[],t3:[],tk:[],hdr:[],rend:[],zero:0},m,L=t.split(/\n/);
   L.forEach(function(l){
+   if(/\b\d{1,2}\s*[:.]\s*\d{2}\b/.test(l)&&/(?:^|\s)0\s*[.,]\s*00(?!\d)/.test(l))c.zero++;
    if((m=/hora\s*ini\w*\D{0,4}(\d{1,2})\s*[:.;,]\s*(\d{2})/i.exec(l)))c.horaIni.push(hhmm(m[1],m[2]));
    if((m=/hora\s*fin\w*\D{0,4}(\d{1,2})\s*[:.;,]\s*(\d{2})/i.exec(l)))c.horaFin.push(hhmm(m[1],m[2]));
    if((m=/k\w?\s*l[il1|]b\w{1,3}\D{0,4}(\d{1,4})(?:\s*[.,\-]\s*|\s+)(\d)(?!\d)/i.exec(l)))c.libre.push(num(m[1]+'.'+m[2]));
@@ -1616,8 +1711,8 @@ var LECTOR=(function(){var root={};
  function uniq(a){var o={};a.forEach(function(v){if(v!=null&&isFinite(v))o[v]=(o[v]||0)+1;});return Object.keys(o).map(function(k){return {v:+k,n:o[k]};});}
  function toMin(h){var p=h.split(':');return +p[0]*60+ +p[1];}
  function readTicket(texts){
-  var all={horaIni:[],horaFin:[],libre:[],ocup:[],total:[],totalP:[],hdr:[],rend:[],tk:[],fecha:[]},sums=[];
-  texts.forEach(function(t){var c=ticketCand(t),s=0,seen={};for(var k in all)if(k!=='tk')all[k]=all[k].concat(c[k]);
+  var all={horaIni:[],horaFin:[],libre:[],ocup:[],total:[],totalP:[],hdr:[],rend:[],tk:[],fecha:[]},sums=[],zs=[];
+  texts.forEach(function(t){var c=ticketCand(t),s=0,seen={};zs.push(c.zero);for(var k in all)if(k!=='tk')all[k]=all[k].concat(c[k]);
    c.tk.forEach(function(p){if(!seen[p[0]]){seen[p[0]]=1;s+=p[1];}});if(Object.keys(seen).length>=4)sums.push(Math.round(s*10)/10);});
   var out={},q={},hi=mode(all.horaIni),hf=mode(all.horaFin),hd=mode(all.hdr);
   if(hi){out.horaIni=hi.v;q.horaIni={ok:hi.n>=2,n:hi.n,of:all.horaIni.length};}
@@ -1651,7 +1746,7 @@ var LECTOR=(function(){var root={};
    var l1=mode(all.libre),o1=mode(all.ocup);if(l1&&o1){out.kmTotales=Math.round((l1.v+o1.v)*10)/10;q.kmTotales={ok:false,n:1,of:1};}
   }
   var fe=mode(all.fecha);
-  return {f:out,q:q,cands:{impresora:(typeof Ts!=='undefined'?Ts:[]).slice().sort(function(a,b){return b.n-a.n;}).map(function(x){return x.v;}).slice(0,4)},fecha:fe?fe.v:null,fechaOk:!!(fe&&fe.n>=2),fechaN:fe?fe.n:0};
+  return {f:out,q:q,cands:{impresora:(typeof Ts!=='undefined'?Ts:[]).slice().sort(function(a,b){return b.n-a.n;}).map(function(x){return x.v;}).slice(0,4)},fecha:fe?fe.v:null,fechaOk:!!(fe&&fe.n>=2),fechaN:fe?fe.n:0,extra:{zero:(mode(zs)||{v:0}).v}};
  }
  /* TPV: importe total */
  function readTPV(texts){
@@ -1769,6 +1864,7 @@ function tpvDate(t){var m=String(t||'').match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](
 window.__tpvDate=tpvDate;
 function ocrApply(r,meta){
  S.ocr=S.ocr||{};
+ if(r&&r.extra&&meta&&meta.slot==='taximetro')S.tkInfo=r.extra;
  if(meta&&meta.slot==='tpv'){S.tpvParts=S.tpvParts||{};if(r.f&&r.f.tpv!=null)S.tpvParts[meta.idx]=r.f.tpv;if(r.fecha)S.tpvDate=r.fecha;var ks=Object.keys(S.tpvParts);if(ks.length>1&&!(S.ocr.tpv&&S.ocr.tpv.typed)){var sm=0;ks.forEach(function(q){sm+=S.tpvParts[q];});S.form.tpv=Math.round(sm*100)/100;S.ocr.tpv={ok:true,slot:'tpv',idx:0,ar:r.ar||1.5,sum:ks.length};return;}}
  if(r&&r.fecha&&meta&&meta.slot==='taximetro'){S.ticketDate=r.fecha;S.ticketDateOk=!!r.fechaOk;}
  if(r.cands)for(var ck in r.cands){var cl=r.cands[ck];if(cl&&cl.length&&!S.ocr[ck]&&ocrEmpty(S.form[ck])&&!(r.f&&r.f[ck]!=null)){S.ocr[ck]={ok:false,cands:cl,slot:meta&&meta.slot,idx:meta?meta.idx:0,box:null,ar:r.ar||1.5,nolee:true};}}
@@ -1901,6 +1997,15 @@ function kmHelper(){
  var k=S.km2=S.km2||{};
  return '<div class="row" style="grid-column:1/-1;flex-wrap:wrap"><span class="small muted">¿No lo lee? Súmalos:</span><input class="inp" style="width:110px" data-km="libre" type="text" inputmode="decimal" placeholder="Km libre" aria-label="Km libre" value="'+esc(k.libre||'')+'" autocomplete="off"><span>+</span><input class="inp" style="width:110px" data-km="ocup" type="text" inputmode="decimal" placeholder="Km ocupado" aria-label="Km ocupado" value="'+esc(k.ocup||'')+'" autocomplete="off"></div>';
 }
+function t3Picked(){return !!(S.t3picked||(S.ocr&&S.ocr.tarifa3Decl&&S.ocr.tarifa3Decl.typed));}
+function t3Chips(){
+ var cur=num(S.form.tarifa3Decl),pk=t3Picked();
+ var h='<div class="lb" style="margin-top:6px">¿Cuántos servicios de Tarifa 3 pone el ticket? Toca el número</div><div class="chips">'+[0,1,2,3].map(function(n){return '<button type="button" class="pick" data-act="t3-set" data-v="'+n+'" aria-pressed="'+(pk&&cur===n)+'">'+n+'</button>';}).join('')+'</div>';
+ var z=S.tkInfo&&S.tkInfo.zero;
+ if(z)h+='<div class="small muted">En el ticket veo '+z+' línea'+(z>1?'s':'')+' con importe 0,00 (suelen ser servicios de precio cerrado). Compruébalo en la foto.</div>';
+ if(!pk)h+='<div class="small" style="color:var(--bad,#b00020)"><b>Elige un número:</b> no lo dejo a cero por mi cuenta.</div>';
+ return h;
+}
 function t3Html(){
  if(S.mine)return '';
  var r=verify(S.form,S.caps,drv().pct,[],false).t3;if(!r||r.ok)return '';
@@ -2023,6 +2128,7 @@ function act(a,d){
   case 'finc-open':S.finc=S.finc||{};S.finc[d.k]=S.finc[d.k]||{};S.finc[d.k].open=true;render(true);return;
   case 'finc-cancel':S.finc=S.finc||{};S.finc[d.k]={open:false,text:(S.finc[d.k]||{}).text};render(true);return;
   case 'finc-save':{S.finc=S.finc||{};var fie=$('finc_'+d.k),fit=fie?fie.value.trim():((S.finc[d.k]||{}).text||'');S.finc[d.k]={open:false,text:fit||'Sin detalle'};render(true);return;}
+  case 't3-set':{S.form.tarifa3Decl=+d.v;S.t3picked=true;render(true);return;}
   case 't3-chip':{S.t3note=S.t3note||{chip:'',text:''};S.t3note.chip=S.t3note.chip===d.m?'':d.m;render(true);return;}
   case 'regs-reload':S.regs=null;S.regsBusy=false;render(true);return;
   case 'hmore':S.hmore=!S.hmore;render(true);return;
@@ -2167,7 +2273,7 @@ function dayId(d){return (+d.uid)*100000+Math.round(Date.parse(d.fecha+'T12:00:0
 function mapDay(d){
  var dt=d.datos||{},f=dt.form||{},caps=+dt.caps||0,pend=dt.pend||[],pct=(d.uid===1)?0:(d.pct||45);
  var res=verify(f,caps,pct,pend,d.uid===1);
- return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||'',carga:dt.carga||null,reg:dt.reg||'',fcheck:d.fechaCheck||'',enviado:d.enviado||''};
+ return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||'',carga:dt.carga||null,reg:dt.reg||'',fcheck:d.fechaCheck||'',enviado:d.enviado||'',hist:d.hist||[],volcado:d.volcado||''};
 }
 function mapReq(r){
  var day=S.days.filter(function(x){return x.key===r.clave;})[0],st=String(r.estado||'').toUpperCase(),e;
@@ -2179,7 +2285,7 @@ function mapExp(e){return {id:e.id,uid:e.uid,date:e.fecha,tipo:e.tipo,importe:e.
 function mapUser(u){
  var st=u.estado;if(st==='ACTIVO'&&u.rol!=='MASTER'&&!u.vinculado)st='POR ACTIVAR';
  if(u.vinculado)delete S.codes[u.id];
- return {id:u.id,name:u.nombre,role:u.rol,status:st,pct:u.pct,device:u.vinculado?(u.dispositivo||'Sí'):'',code:S.codes[u.id]||null};
+ return {id:u.id,name:u.nombre,role:u.rol,status:st,pct:u.pct,device:u.vinculado?(u.dispositivo||'Sí'):'',code:S.codes[u.id]||null,prueba:!!u.prueba};
 }
 var LOGT={REGISTRO:'activó su móvil',TURNO_ENVIADO:'envió un turno',TURNO_REENVIADO:'reenvió un turno corregido',LOGIN_MASTER:'entró como máster',LOGIN_MASTER_FALLIDO:'intento fallido de entrar como máster',PIDE_CORRECCION:'pidió corregir un día',GASTO:'subió un gasto',ACEPTA_DIA:'aceptó un día',MARCA_PROBLEMA:'marcó un problema',RESUELVE_PROBLEMA:'resolvió un problema',GASTO_APROBADO:'confirmó un gasto',GASTO_RECHAZADO:'rechazó un gasto',GASTO_PAGADO:'pagó un gasto',AUTORIZA_CORRECCION:'autorizó una corrección',RECHAZA_CORRECCION:'rechazó una corrección',ALTA_USUARIO:'dio de alta a un usuario',NUEVO_CODIGO:'generó un código nuevo',USUARIO_BLOQUEADO:'bloqueó a un usuario',USUARIO_ACTIVO:'reactivó a un usuario',USUARIO_ARCHIVADO:'archivó a un usuario',DESVINCULA:'desvinculó un móvil',LOGIN_USUARIO:'entró',PONE_CLAVE:'puso contraseña a',CARGA_HISTORICO:'cargó días del Excel en la app',ERROR:'error del servidor'};
 function logDet(a,d){
@@ -2197,6 +2303,7 @@ function mapLog(l){
 }
 function applySnap(j){
  TODAY=iso(new Date());
+ colaCount().then(function(){if(S.colaN>0)colaFlush();});
  if(j.role!=='master'&&!S._histDone&&LIVE){S._histDone=true;setTimeout(function(){call('miHistorico',{}).then(function(c){if(c.ok&&c.dias){S.hist=c.dias;render(true);}});},300);}
  if(j.role!=='master'&&!S._cmpDone&&LIVE){S._cmpDone=true;setTimeout(function(){call('miComparativa',{}).then(function(c){if(c.ok){S.cmp=c;render(true);}});},0);}
  if(j.role==='master'&&!S._posDone){S._posDone=true;S.mtab='cc';}
@@ -2329,6 +2436,7 @@ function sendLive(){
  S.busy=true;S.sendErr='';render(true);
  packPhotos(S.files).then(function(photos){req.photos=photos;return call('submitShift',req);}).then(function(j){
   if(!j.ok){
+   if(j.error==='SIN_RED'){return colaAdd(req).then(function(){S.busy=false;S.editing=null;resetForm();S.regId=null;S.regLast=null;S.screen='up';S.dtab='home';S.flash='Sin señal: el turno queda guardado en este móvil y se envía solo en cuanto haya cobertura. Deja la app abierta.';render(true);});}
    if(j.error==='DUPLICADO'&&!S.second&&!S.editing){return refresh().then(function(){
     var ex=S.days.filter(function(x){return x.date===req.date&&x.driver===(S.me&&S.me.id)&&!/#2$/.test(x.key);})[0];
     if(ex&&num(ex.f.impresora)===num(f.impresora)&&num(ex.f.total)===num(f.total)){S.editing=null;resetForm();S.screen='sent';S.dtab='up';S.lastSent=ex.id;S.sendErr='';render(true);return;}
@@ -2453,6 +2561,10 @@ document.addEventListener('input',function(e){
  if(t.dataset.f){S.form[t.dataset.f]=t.value;if(S.ocr){var oo=S.ocr[t.dataset.f]||(S.ocr[t.dataset.f]={});oo.conf=true;oo.typed=true;oo.ok=true;}var l=$('live');if(l)l.innerHTML=liveHtml();}
  if(t.dataset.fn!==undefined&&S.fn&&S.fn[+t.dataset.fn]){var sv=S.fn[+t.dataset.fn];sv[t.dataset.fk]=t.value;if(t.dataset.fk==='imp')sv.typed=true;sv.conf=false;fnSync();var fs=$('fnsum');if(fs)fs.innerHTML=fnSumHtml();}
  if(t.dataset.t3&&S.t3note)S.t3note.text=t.value;
+ if(t.id==='nota')S.texto=t.value;
+ if(t.dataset.ed&&S.edit)S.edit.f[t.dataset.ed]=t.value;
+ if(t.id==='edMot'&&S.edit)S.edit.motivo=t.value;
+ if(t.id==='delMot'&&S.del)S.del.motivo=t.value;
  if(t.id&&t.id.indexOf('finc_')===0){S.finc=S.finc||{};var fk=t.id.slice(5);(S.finc[fk]=S.finc[fk]||{open:true}).text=t.value;}
  if(t.dataset.km){S.km2=S.km2||{};S.km2[t.dataset.km]=t.value;var ka=num(S.km2.libre),kb=num(S.km2.ocup);if(isFinite(ka)||isFinite(kb)){var ksum=r2((isFinite(ka)?ka:0)+(isFinite(kb)?kb:0));S.form.kmTotales=ksum;S.ocr=S.ocr||{};var ko=S.ocr.kmTotales||(S.ocr.kmTotales={});ko.conf=true;ko.typed=true;ko.ok=true;var kf=$('f_kmTotales');if(kf)kf.value=String(ksum).replace('.',',');var kl=$('live');if(kl)kl.innerHTML=liveHtml();}}
  if(t.id==='accMot')S.accMot=t.value;
