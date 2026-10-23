@@ -97,6 +97,13 @@ p{margin:0}
 .steps span{flex:1;height:6px;background:var(--line)}
 .steps span.on{background:var(--ink)}
 .steps span.done{background:var(--ok)}
+.exitmod{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:90;display:flex;align-items:center;justify-content:center;padding:18px}.exitbox{background:#fff;color:#14171A;border-radius:8px;padding:18px;max-width:380px;width:100%;display:flex;flex-direction:column;gap:12px;font-size:16px}.exitbox b{font-size:19px}
+.steps button{flex:1;height:22px;background:none;border:0;padding:0;position:relative;cursor:pointer;min-height:0}
+.steps button::before{content:"";position:absolute;left:0;right:0;top:8px;height:6px;background:var(--line)}
+.steps button.on::before{background:var(--ink)}.steps button.done::before{background:var(--ok)}
+.lockrow{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(128,128,128,.3)}.lockrow>div{flex:1;min-width:0}.lockrow .lv{font-size:17px}.lockrow .lkb{flex:none}
+.gtp .lkb,.gfn .lkb{background:#fff!important;color:#14171A!important}
+.stp3{display:flex;align-items:center;gap:14px;margin:6px 0}.stp3 button{width:48px;height:48px;font-size:26px;font-weight:700;border-radius:6px;border:2px solid #14171A;background:#fff;color:#14171A}.stp3 b{font-size:30px;min-width:44px;text-align:center}
 .stepcap{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);margin-top:-6px}
 .thumbs .th{position:relative}
 .thumbs .th button{position:absolute;top:-8px;right:-8px;width:28px;height:28px;border-radius:50%;border:2px solid var(--surface);background:var(--ink);color:var(--bg);display:grid;place-items:center;padding:0}
@@ -217,6 +224,16 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 @keyframes lred{0%,45%{opacity:1}46%,100%{opacity:.15}}
 @keyframes lgrn{0%,45%{opacity:.15}46%,100%{opacity:1}}
 @keyframes road{to{stroke-dashoffset:-16}}
+.thinkf{position:fixed;left:10px;right:10px;z-index:80;box-shadow:0 6px 24px rgba(0,0,0,.35);max-width:520px;margin:0 auto}
+.thinkf svg{width:190px;height:38px}
+.think .tx2{animation:txr 14s ease-in-out infinite}.think .lr{animation:lred2 14s steps(1) infinite}.think .lg{animation:lgrn2 14s steps(1) infinite;opacity:.15}
+.think .oc{animation:ocr 14s linear infinite}.think .bg{animation:bgs 7s linear infinite}.think .pe2{animation:pe2 14s steps(1) infinite}
+@keyframes txr{0%{transform:translateX(-70px)}22%,50%{transform:translateX(38px)}72%,80%{transform:translateX(140px)}100%{transform:translateX(280px)}}
+@keyframes lred2{0%,48%{opacity:1}49%,100%{opacity:.15}}
+@keyframes lgrn2{0%,48%{opacity:.15}49%,100%{opacity:1}}
+@keyframes ocr{0%,24%{transform:translateX(250px) translateY(4px)}38%{transform:translateX(-40px) translateY(4px)}100%{transform:translateX(-40px) translateY(4px)}}
+@keyframes bgs{from{transform:translateX(0)}to{transform:translateX(-120px)}}
+@keyframes pe2{0%,56%{opacity:0}57%,79%{opacity:1}80%,100%{opacity:0}}
 @keyframes wheel{to{transform:rotate(360deg)}}
 .draftb{display:flex;flex-direction:column;gap:8px}
 .fnh{display:flex;align-items:center;gap:10px}
@@ -321,7 +338,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='v96';
+var APP_V='v97';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -347,6 +364,11 @@ var FIELDS=[
   {k:'impresora',l:'Total ticket impresora',s:'taximetro'},{k:'kmTotales',l:'Km totales',s:'taximetro'},
   {k:'horaIni',l:'Hora inicio',s:'taximetro',time:1},{k:'horaFin',l:'Hora fin',s:'taximetro',time:1},
   {k:'tarifa3Decl',l:'Servicios de Tarifa 3 que pone el ticket',s:'taximetro'}]},
+ {g:'Resto del ticket',items:[
+  {k:'nServ',l:'Servicios (carreras)',s:'taximetro'},{k:'kmLibre',l:'Km libre',s:'taximetro'},{k:'kmOcup',l:'Km ocupado',s:'taximetro'},
+  {k:'tk1',l:'Km Tarifa 1',s:'taximetro'},{k:'tk2',l:'Km Tarifa 2',s:'taximetro'},{k:'tk3',l:'Km Tarifa 3',s:'taximetro'},
+  {k:'tk4',l:'Km Tarifa 4',s:'taximetro'},{k:'tk5',l:'Km Tarifa 5',s:'taximetro'},{k:'tk6',l:'Km Tarifa 6+',s:'taximetro'},
+  {k:'turnoNo',l:'Nº de turno',s:'taximetro'}]},
  {g:'Datáfono (TPV)',items:[{k:'tpv',l:'Importe de la foto del datáfono',s:'tpv'}]},
  {g:'FreeNow',items:[
   {k:'freenow',l:'FreeNow total',s:'freenow'},
@@ -525,7 +547,7 @@ function draftRestore(){
  for(var k in S.slots){if(S.slots[k]==='ok'&&!(S.thumbs[k]||[]).length&&!(k==='servicios'&&S.caps))S.slots[k]='none';}
  render();window.scrollTo(0,0);
 }
-function resetForm(){clearDraft();S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;}
+function resetForm(){clearDraft();S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
 function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
@@ -830,10 +852,11 @@ function driverDays(){
  return h;
 }
 function steps(n){
- var l=['FreeNow','Taxímetro','TPV','Coche','Confirmar','Resultado'];
+ var l=['FreeNow','Taxímetro','TPV','Coche','Revisar y enviar'];
+ S.maxStep=Math.max(S.maxStep||1,n);
  var h='<div class="steps">';
- for(var i=1;i<=6;i++)h+='<span class="'+(i<n?'done':(i===n?'on':''))+'"></span>';
- return h+'</div><div class="stepcap">Paso '+n+' de 6 · '+l[n-1]+'</div>';
+ for(var i=1;i<=5;i++)h+='<button type="button" class="'+(i===n?'on':(i<=S.maxStep?'done':''))+'" data-act="goto-step" data-n="'+i+'" aria-label="Ir al paso '+i+': '+l[i-1]+'"></button>';
+ return h+'</div><div class="stepcap">Paso '+n+' de 5 · '+l[n-1]+' · toca una barra para ir a ese paso</div>';
 }
 function slotCard(s){
  var st=S.slots[s.k],th=S.thumbs[s.k]||[],n=th.length;
@@ -872,9 +895,9 @@ function driverUpload(){
  if(S.second&&!S.mine)h+='<div class="banner ink"><b>Segundo turno de hoy</b><span class="small">Iván recibirá un aviso de que hay dos turnos el mismo día.</span></div>';
  if(S.editing){var ed=dayById(S.editing);h+='<div class="banner ink"><b>Corrigiendo el día '+dl(ed.date)+'</b><span>Iván lo ha autorizado. Cambia lo que haga falta y reenvía.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="edit-cancel">Cancelar corrección</button></div>';}
  h+=steps(n)+'<div class="row sp"><h2>'+STEPT[n-1]+'</h2><button class="btn sm ghost" data-act="sound">'+(S.sound?'Sonido: sí':'Sonido: no')+'</button></div>';
- if(n===1)h+=fnStep();
- if(n===2)h+=slotCard(SL('taximetro'))+dateWarn();
- if(n===3)h+=slotCard(SL('tpv'))+tpvWarn();
+ if(n===1)h+=fnStep()+(((S.fn||[]).length&&fnTotals().sum>0)?groupCard('FreeNow'):'');
+ if(n===2)h+=slotCard(SL('taximetro'))+dateWarn()+((S.slots.taximetro!=='none'||isFinite(num(S.form.impresora)))?groupCard('Del ticket')+groupCard('Resto del ticket'):'');
+ if(n===3)h+=slotCard(SL('tpv'))+tpvWarn()+((S.slots.tpv!=='none'||isFinite(num(S.form.tpv)))?groupCard('Datáfono (TPV)'):'');
  if(n===4)return h+carStep();
  h+='<div class="hint">Si una foto sale mal o no se lee, quítala y sube otra. Si no hay forma, “Reportar incidencia” y sigues.</div>';
  h+='<div class="row">'+(n>1?'<button class="btn ghost" data-act="step-back">Atrás</button>':'')+'<button class="btn pri grow" data-act="step-next">Siguiente</button></div>';
@@ -1018,15 +1041,40 @@ function fnStep(){
  L.forEach(function(x,i){h+=fnCard(x,i,th[i]);});
  h+=blurBanner('freenow');
  h+='<div class="acts"><label class="btn sm yel"><input type="file" accept="image/*" multiple class="fi" data-slot="freenow">'+I.cam+' '+(th.length?'Añadir más servicios':'Elegir capturas de FreeNow')+'</label>';
- if(st==='none'||!st)h+='<button class="btn sm ghost" data-act="dudosa" data-k="freenow">Hoy no hubo FreeNow</button>';
- h+='<button class="btn sm ghost" data-act="inc-open" data-k="freenow">Reportar incidencia</button></div>';
+ if(!th.length)h+='<button class="btn sm ghost" data-act="fn-none">Hoy no hubo FreeNow · siguiente</button>';
+ if(th.length)h+='<button class="btn sm ghost" data-act="inc-open" data-k="freenow">Reportar incidencia</button>';
+ h+='</div>';
+ if(st==='nada'&&!th.length)h+='<div class="small muted">Sin FreeNow hoy. No hace falta avisar a nadie.</div>';
  var inc=S.slotInc.freenow;
  if(inc&&inc.open)h+='<div class="stack"><textarea id="inc_freenow" placeholder="¿Qué ha pasado? (no se sube, no se lee, me equivoqué de botón…)" aria-label="Qué ha pasado">'+esc(inc.text||'')+'</textarea><div class="row"><button class="btn sm ghost" data-act="inc-cancel" data-k="freenow">Cancelar</button><button class="btn sm pri grow" data-act="inc-save" data-k="freenow">Avisar a Iván y seguir</button></div></div>';
  else if(inc&&inc.text)h+='<div class="inc"><b>Incidencia anotada:</b> '+esc(inc.text)+'. Iván la confirmará.</div>';
  else if(st==='dudosa')h+='<div class="inc">Se envía pendiente de confirmar por Iván.</div>';
  return h+'</div>';
 }
+var MONEYK={impresora:1,tpv:1,freenow:1,fnApp:1,fnEfe:1,taxEfe:1,appTax:1,err:1};
+function lockedField(f){
+ if(!LIVE||f.k==='tarifa3Decl')return false;
+ if(S.edF&&S.edF[f.k])return false;
+ if(!f.s||S.slots[f.s]!=='ok')return false;
+ var v=S.form[f.k];if(v==null||v==='')return false;
+ if(!f.time&&!isFinite(num(v)))return false;
+ var o=S.ocr&&S.ocr[f.k];if(o&&(o.typed||(!o.ok&&!o.conf)))return false;
+ return true;
+}
+function t3Block(){
+ var cur=num(S.form.tarifa3Decl);if(!isFinite(cur))cur=0;
+ var pk=t3Picked(),info=S.tkInfo||{},o=S.ocr&&S.ocr.tarifa3Decl;
+ var h='<div class="lb" style="margin-top:6px"><b>Servicios de Tarifa 3 (precio cerrado)</b> que pone el ticket</div><div class="stp3"><button type="button" data-act="t3-dec" aria-label="Uno menos">−</button><b class="mono">'+cur+'</b><button type="button" data-act="t3-inc" aria-label="Uno más">+</button></div>';
+ if(info.t3n!=null)h+='<div class="small">He contado '+info.t3n+' línea'+(info.t3n===1?'':'s')+' con importe 0,00 en el listado del ticket'+(S.form.tk3!=null&&S.form.tk3!==''?' y '+String(S.form.tk3).replace('.',',')+' km en Tarifa 3':'')+'. '+(pk?'<span class="chip ok">✓ Comprobado</span>':'<span class="chip warn">Compruébalo en la foto</span>')+'</div>';
+ if(!pk)h+='<div class="small" style="color:inherit"><b>Revisa el número</b> con la foto. Si es correcto toca «Es correcto»; si no, ajusta con + o −.</div><button type="button" class="btn sm yel" data-act="t3-ok">Es correcto</button>';
+ return h;
+}
 function fieldHtml(f){
+ if(f.k==='tarifa3Decl'&&LIVE&&!S.mine)return '<div class="field" style="display:block">'+t3Block()+t3Html()+'</div>';
+ if(lockedField(f)){
+  var lv=S.form[f.k],lo=S.ocr&&S.ocr[f.k],shown=f.time?String(lv):(MONEYK[f.k]?eur(num(lv)):String(num(lv)).replace('.',','));
+  return '<div class="lockrow"><div><span class="nm">'+f.l+'</span><div class="src"><span class="chip ok">'+(lo&&lo.ok?'Leído de la foto':'De tu foto')+'</span>'+(lo&&!lo.conf&&CHKL[f.k]&&chkItems(null,f.k).length?' <button class="btn sm ghost" data-act="chk-one" data-k="'+f.k+'">Ver en la foto</button>':'')+'</div></div><b class="mono lv">'+shown+'</b><button class="btn sm ghost lkb" data-act="ed-f" data-k="'+f.k+'">Cambiar</button></div>';
+ }
  var st=f.s?S.slots[f.s]:null;
  var src=f.s?(st==='ok'?'<span class="chip ok">'+(LIVE?'Foto subida: escribe lo que ves':'Leído de foto')+'</span>':'<span class="chip warn">Sin foto: escríbelo o déjalo pendiente</span>'):'<span class="chip ink">Lo tecleas tú</span>';
  if(LIVE&&S.ocr&&S.ocr[f.k])src=(S.ocr[f.k].typed?'<span class="chip ok">Escrito por ti</span>':S.ocr[f.k].nolee?'<span class="chip warn">No lo he podido leer: elige uno o escríbelo</span>':S.ocr[f.k].conf?'<span class="chip ok">Confirmado con la foto</span>':(S.ocr[f.k].ok?'<span class="chip ok">Leído de la foto</span>':'<span class="chip warn">Leído: compruébalo en la foto</span>'))+(!S.ocr[f.k].conf&&CHKL[f.k]&&chkItems(null,f.k).length?' <button class="btn sm ghost" data-act="chk-one" data-k="'+f.k+'">Ver en la foto</button>':'');
@@ -1034,7 +1082,7 @@ function fieldHtml(f){
  if(typeof v==='number')v=String(v).replace('.',',');
  var cd='',oo=S.ocr&&S.ocr[f.k];
  if(LIVE&&oo&&!oo.ok&&!oo.conf&&oo.cands&&oo.cands.length>=1)cd='<div class="small" style="grid-column:1/-1"><b>'+(f.k==='impresora'?'¿Cuál es el Importe TOTAL del ticket?':'¿Es uno de estos?')+'</b> Toca el correcto, o escríbelo.</div><div class="chips" style="grid-column:1/-1">'+oo.cands.slice(0,4).map(function(x){return '<button class="pick" data-act="pick-cand" data-k="'+f.k+'" data-v="'+x+'">'+String(x).replace('.',',')+'</button>';}).join('')+'</div>';
- return '<div class="field"><label class="nm" for="f_'+f.k+'">'+f.l+'</label><input id="f_'+f.k+'" data-f="'+f.k+'" type="text" '+(f.time?'placeholder="hh:mm"':'inputmode="decimal"')+' value="'+esc(v)+'" autocomplete="off"><div class="src">'+src+'</div>'+cd+(LIVE&&!S.mine?fincHtml(f.k):'')+(LIVE&&f.k==='kmTotales'?kmHelper():'')+(LIVE&&f.k==='tarifa3Decl'?'<div style="grid-column:1/-1">'+(S.mine?'':t3Chips())+t3Html()+'</div>':'')+'</div>';
+ return '<div class="field"><label class="nm" for="f_'+f.k+'">'+f.l+'</label><input id="f_'+f.k+'" data-f="'+f.k+'" type="text" '+(f.time?'placeholder="hh:mm"':'inputmode="decimal"')+' value="'+esc(v)+'" autocomplete="off"><div class="src">'+src+'</div>'+cd+(LIVE&&!S.mine?fincHtml(f.k):'')+(LIVE&&f.k==='kmTotales'?kmHelper():'')+(LIVE&&f.k==='tarifa3Decl'?'<div style="grid-column:1/-1">'+t3Html()+'</div>':'')+'</div>';
 }
 function pendList(){var p=[];if(LIVE&&!S.mine&&S.slots.taximetro==='ok'&&!t3Picked())p.push('Tarifa 3 sin confirmar');SLOTS.forEach(function(s){if(S.slots[s.k]==='dudosa')p.push(s.t);});if(LIVE&&!S.mine&&auditData().some(function(x){return x.cambiado;}))p.push('Datos escritos a mano');if(tpvDateBad())p.push('Fecha del TPV');if(LIVE&&!S.mine&&S.ticketDate&&dayDiff(S.ticketDate,shiftDate())!==0)p.push('Fecha del ticket');return p;}
 function liveHtml(){
@@ -1042,23 +1090,18 @@ function liveHtml(){
  var map={VERDE:['ok','Verde: todo cuadra'],ROJO:['bad','Rojo: '+(r.reasons[0]||'')],PENDIENTE:['warn','Pendiente de confirmar por Iván'],BLOQUEADO:['bad','Ticket incompleto: falta '+r.incomplete.join(', ')],FALTAN:['warn','Faltan datos: '+r.missing.join(', ')]}[r.overall];
  return '<span class="chip '+map[0]+'">'+esc(map[1])+'</span>';
 }
-function driverConfirm(){
- var h=steps(5)+(LIVE?'<h2>Revisa los datos</h2><p class="muted">La app intenta leer el ticket y el TPV. Lo marcado “compruébalo” míralo siempre en la foto. Lo demás, escríbelo. Lo que quede aquí es lo que se guarda.</p>'+(chkCount(null)>0?'<button class="btn yel block" data-act="chk-all">Comprobar con las fotos los números leídos ('+chkCount(null)+')</button>':''):'<h2>¿Está bien lo que he leído?</h2><p class="muted">Revisa cada número. Lo que corrijas es lo que se guarda.</p>');
+function dudList(){
  var dud=[];FIELDS.forEach(function(g){g.items.forEach(function(f){var o=S.ocr&&S.ocr[f.k];if(f.s&&S.slots[f.s]==='ok'&&LIVE&&(isNaN(num(S.form[f.k]))&&['impresora','tpv','kmTotales'].indexOf(f.k)>=0||(o&&!o.ok&&!o.conf&&CHKL[f.k])))dud.push(f.l);});});
- if(dud.length)h+='<div class="banner bad"><b>Tengo dudas con: '+dud.map(esc).join(', ')+'</b><span>No lo he podido leer con seguridad. Mira la foto al lado del número y dime cuál es el correcto; no lo dejo a cero.</span></div>';
- FIELDS.forEach(function(g){
-  var gc=g.g==='Del ticket'?'gtk':(g.g==='FreeNow'?'gfn':'gtp');
-  h+='<div class="card '+gc+'">'+(gc==='gfn'?'<div class="row" style="margin-bottom:4px">'+FNLOGO+'<h3 style="margin:0">FreeNow</h3></div>':'<h3 style="margin-bottom:4px">'+g.g+'</h3>');
-  g.items.forEach(function(f){h+=fieldHtml(f);});
-  if(g.g==='Del ticket')h+='<div class="field" style="display:block"><button class="toggle" data-act="tarifasOk" aria-pressed="'+(S.form.tarifasOk?'true':'false')+'">'+(S.form.tarifasOk?I.ok:I.dash).replace('<svg','<svg width="18" height="18"')+' El ticket muestra el resumen de tarifas</button></div>';
-  h+='</div>';
- });
- var cf=S.form,cfT=num(cf.total),cfE=num(cf.efectivo);
- h+='<div class="card stack"><h3 style="margin:0">Lo calcula la app (no tienes que escribir nada)</h3><div class="row sp"><span>Total recaudado (ticket + FreeNow)</span><b>'+(isFinite(cfT)?eur(cfT):'—')+'</b></div><div class="row sp"><span>Efectivo que debes llevar</span><b>'+(isFinite(cfE)?eur(cfE):'—')+'</b></div><span class="small muted">Efectivo = total − datáfono − pagos por app.</span></div>';
- h+='<div class="card row sp"><span class="small muted">Ahora mismo</span><span id="live">'+liveHtml()+'</span></div>';
- h+=noteCard();
- h+='<div class="row"><button class="btn ghost" data-act="back-up">Atrás</button><button class="btn ok grow" data-act="to-result">✓ Todo correcto</button></div><p class="small muted" style="text-align:center">Si algo no es así, cámbialo arriba: Iván recibirá un aviso de lo que has cambiado.</p>';
- return h;
+ return dud;
+}
+function groupCard(name){
+ var g=FIELDS.filter(function(x){return x.g===name;})[0];if(!g)return '';
+ var gc=(name==='Del ticket'||name==='Resto del ticket')?'gtk':(name==='FreeNow'?'gfn':'gtp');
+ var ttl=name==='Del ticket'?'Lo que he leído del ticket':(name==='Resto del ticket'?'Más datos del ticket':(name==='Datáfono (TPV)'?'Lo que he leído del datáfono':'FreeNow'));
+ var h='<div class="card '+gc+'">'+(gc==='gfn'?'<div class="row" style="margin-bottom:4px">'+FNLOGO+'<h3 style="margin:0">'+ttl+'</h3></div>':'<h3 style="margin-bottom:4px">'+ttl+'</h3>');
+ g.items.forEach(function(f){h+=fieldHtml(f);});
+ if(name==='Del ticket')h+='<div class="field" style="display:block"><button class="toggle" data-act="tarifasOk" aria-pressed="'+(S.form.tarifasOk?'true':'false')+'">'+(S.form.tarifasOk?I.ok:I.dash).replace('<svg','<svg width="18" height="18"')+' El ticket muestra el resumen de tarifas</button></div>';
+ return h+'</div>';
 }
 function resumenHtml(){
  var f=S.form,t=fnTotals(),r=verify(f,S.caps,drv().pct,pendList(),S.mine);
@@ -1079,7 +1122,11 @@ function resumenHtml(){
   +'<h3 style="margin:6px 0 0">Ticket del taxímetro</h3>'
   +row('Km totales',isFinite(km)?String(Math.round(km*10)/10).replace('.',',')+' km':'—')
   +row('Horario',(f.horaIni||'—')+' a '+(f.horaFin||'—'))
+  +row('Servicios del ticket',f.nServ!=null&&f.nServ!==''?String(num(f.nServ)):'—')
+  +row('Km libre / ocupado',(f.kmLibre!=null&&f.kmLibre!==''?String(num(f.kmLibre)).replace('.',','):'—')+' / '+(f.kmOcup!=null&&f.kmOcup!==''?String(num(f.kmOcup)).replace('.',','):'—'))
+  +row('Km por tarifa (1·2·3·4·5·6+)',[1,2,3,4,5,6].map(function(n){var v=f['tk'+n];return (v==null||v==='')?'–':String(num(v)).replace('.',',');}).join(' · '))
   +row('Servicios de Tarifa 3',String(r.t3.decl)+(r.t3.ok?'':' (en FreeNow: '+r.t3.caps+')'))
+  +(f.turnoNo?row('Nº de turno',esc(String(f.turnoNo))):'')
   +'<span class="small muted">Si algo no es así, pulsa «Corregir».</span></div>';
  return h;
 }
@@ -1088,7 +1135,10 @@ function noteCard(){
 }
 function driverResult(){
  var r=verify(S.form,S.caps,drv().pct,pendList(),S.mine);
- var h=steps(6);
+ var h=steps(5)+'<h2>Revisar y enviar</h2>';
+ var dud=dudList();
+ if(dud.length)h+='<div class="banner bad"><b>Tengo dudas con: '+dud.map(esc).join(', ')+'</b><span>Vuelve al paso del ticket o del datáfono y mira la foto junto al número.</span></div>';
+ if(LIVE&&chkCount(null)>0)h+='<button class="btn yel block" data-act="chk-all">Comprobar con las fotos los números leídos ('+chkCount(null)+')</button>';
  var b={
   VERDE:['ok','Verde','Todo cuadra. Puedes enviar.'],
   ROJO:['bad','Rojo',r.reasons.join(' · ')+'. Puedes enviarlo: quedará pendiente de confirmar por Iván.'],
@@ -1105,7 +1155,7 @@ function driverResult(){
  if(S.dupAsk)h+='<div class="banner ink"><b>Ya hay un turno enviado ese día</b><span>¿Es un segundo turno distinto del mismo día?</span><div class="row"><button class="btn sm ghost" style="background:var(--surface)" data-act="second-no">No</button><button class="btn sm pri grow" data-act="second-yes">Sí, es otro turno</button></div></div>';
  if(S.sendErr)h+='<div class="banner bad"><span>'+esc(S.sendErr)+'</span></div>';
  if(S.busy)h+=thinkHtml('Un segundo, estoy pensando…<br><span style="font-weight:400">Subiendo las fotos y comprobando.</span>','<button class="btn sm ghost" data-act="wait-skip">Seguir sin esperar</button>');
- h+='<div class="row"><button class="btn ghost" data-act="to-confirm"'+(S.busy?' disabled':'')+'>Corregir</button>'+(canSend?'<button class="btn '+(r.overall==='VERDE'?'ok':'yel')+' grow" data-act="send"'+(S.busy?' disabled':'')+'>'+(S.busy?'<span class="spin"></span> Enviando… no cierres la app':(r.overall==='VERDE'?'Enviar turno':((r.overall==='BLOQUEADO'||r.overall==='FALTAN')?'Continuar y notificar el error':'Enviar con aviso a Iván')))+'</button>':'')+'</div><button class="btn sm ghost" style="align-self:center" data-act="leave-ask"'+(S.busy?' disabled':'')+'>Salir sin enviar</button>';
+ h+='<div class="row"><button class="btn ghost" data-act="back-up"'+(S.busy?' disabled':'')+'>Atrás</button>'+(canSend?'<button class="btn '+(r.overall==='VERDE'?'ok':'yel')+' grow" data-act="send"'+(S.busy?' disabled':'')+'>'+(S.busy?'<span class="spin"></span> Enviando… no cierres la app':(r.overall==='VERDE'?'Enviar turno':((r.overall==='BLOQUEADO'||r.overall==='FALTAN')?'Continuar y notificar el error':'Enviar con aviso a Iván')))+'</button>':'')+'</div><button class="btn sm ghost" style="align-self:center" data-act="leave-ask"'+(S.busy?' disabled':'')+'>Salir sin enviar</button>';
  return h;
 }
 function weekKey(iso){var d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-((d.getDay()+6)%7));return iso_(d);}
@@ -1168,7 +1218,7 @@ function driverSent(){
 
 /* máster */
 function dayRow(d,showDriver){
- return '<button class="li" data-act="open" data-id="'+d.id+'"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted">'+esc(uname(d.driver))+(isTest(d.driver)?' · PRUEBA':'')+' · parte '+eur(d.res.parte)+'</div></div>'+cargaChip(d)+chip(d.estado,d.accepted)+'</button>';
+ return '<button class="li" data-act="open" data-id="'+d.id+'"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b class="mono">'+eur(num(d.f.total))+'</b><div class="small muted">'+esc(uname(d.driver))+(isTest(d.driver)?' · PRUEBA':'')+' · parte '+eur(d.res.parte)+'</div></div>'+cargaChip(d)+((LIVE&&!d.carga&&!d.lectOk&&(d.f.nServ!=null||d.f.tk3!=null))?'<span class="chip warn">Revisar lecturas</span>':'')+chip(d.estado,d.accepted)+'</button>';
 }
 function mailHtml(d){
  var why=d.res.reasons.length?d.res.reasons.join('; '):(d.pend.length?'Pendiente de confirmar: '+d.pend.join(', '):'');
@@ -1421,6 +1471,7 @@ function masAct(a,d){
   case 'bk-now':doLive('backupAhora',{},function(j){S.gMsg='Copia hecha en Drive: '+j.nombre;});return true;
   case 'av-ok':{var dd1=dayOf(d);if(!dd1)return true;doLive('editarDia',{key:dd1.key,okIdx:[+d.i],motivo:'Aviso revisado'},function(){S.flash='Aviso marcado como revisado.';});return true;}
   case 'ed-open':{var dd2=dayOf(d);if(dd2){S.edit=edInit(dd2);S.del=null;}render(true);return true;}
+  case 'lect-ok':{var dd5=dayOf(d);if(!dd5)return true;doLive('editarDia',{key:dd5.key,okLect:true,motivo:'Lecturas revisadas'},function(){S.flash='Lecturas marcadas como revisadas.';});return true;}
   case 'ed-cancel':S.edit=null;render(true);return true;
   case 'ed-save':{var dd3=dayOf(d);if(!dd3||!S.edit)return true;var ch={},n=0;Object.keys(S.edit.f).forEach(function(k){if(String(S.edit.f[k])!==String(S.edit.o[k])){ch[k]=String(S.edit.f[k]).replace(',','.');n++;}});
    if(!n){S.edit.err='No has cambiado ningún dato.';render(true);return true;}
@@ -1463,10 +1514,21 @@ function masAct(a,d){
  }
  return false;
 }
-var ED_L={impresora:'Total ticket impresora',kmTotales:'Km totales',horaIni:'Hora inicio',horaFin:'Hora fin',tarifa3Decl:'Servicios de Tarifa 3 (ticket)',tpv:'TPV',freenow:'FreeNow total',fnApp:'FreeNow cobrado por app',fnEfe:'FreeNow efectivo / datáfono',taxEfe:'Taxímetro en efectivo',appTax:'Taxímetro cobrado por app'};
+var ED_L={nServ:'Servicios (carreras)',kmLibre:'Km libre',kmOcup:'Km ocupado',tk1:'Km Tarifa 1',tk2:'Km Tarifa 2',tk3:'Km Tarifa 3',tk4:'Km Tarifa 4',tk5:'Km Tarifa 5',tk6:'Km Tarifa 6+',turnoNo:'Nº de turno',impresora:'Total ticket impresora',kmTotales:'Km totales',horaIni:'Hora inicio',horaFin:'Hora fin',tarifa3Decl:'Servicios de Tarifa 3 (ticket)',tpv:'TPV',freenow:'FreeNow total',fnApp:'FreeNow cobrado por app',fnEfe:'FreeNow efectivo / datáfono',taxEfe:'Taxímetro en efectivo',appTax:'Taxímetro cobrado por app'};
 function edInit(d){
  var f=d.f,o={};Object.keys(ED_L).forEach(function(k){var v=f[k];if(k==='taxEfe'&&(v==null||v==='')){var e=num(f.err),a=num(f.appTax);v=isFinite(e)?r2(e-(isFinite(a)?a:0)):'';}if(k==='fnEfe'&&(v==null))v='';o[k]=(v==null)?'':String(v).replace('.',',');});
  var c={};for(var k in o)c[k]=o[k];return {id:d.id,o:o,f:c,motivo:'',err:''};
+}
+function lectHtml(d){
+ if(!LIVE||d.carga)return '';
+ var f=d.f,keys=['turnoNo','nServ','kmLibre','kmOcup','tk1','tk2','tk3','tk4','tk5','tk6','tarifa3Decl'];
+ if(!keys.some(function(k){return f[k]!=null&&f[k]!=='';}))return '';
+ var h='<div class="card stack"><h3 style="margin:0">Lecturas del ticket</h3><div class="small muted">Lo que la app leyó del ticket y va al Excel. Compáralo con la foto.</div><div class="xlg">';
+ keys.forEach(function(k){var v=f[k];h+='<div><span class="label">'+(ED_L[k]||'Servicios Tarifa 3 (ticket)')+'</span><b class="mono">'+((v==null||v==='')?'—':esc(String(v).replace('.',',')))+'</b></div>';});
+ h+='</div>';
+ if(d.lectOk)h+='<span class="chip ok">✓ Lecturas revisadas por ti</span>';
+ else h+='<div class="row"><button class="btn sm ok" data-act="lect-ok" data-id="'+d.id+'">✓ Lecturas bien</button><button class="btn sm ghost" data-act="ed-open" data-id="'+d.id+'">Corregir</button></div>';
+ return h+'</div>';
 }
 function edHtml(d){
  if(!LIVE)return '';
@@ -1493,7 +1555,7 @@ function masterDetail(){
  if(d.motivoAcep&&!d.carga)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
  if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x,ix){return '<div class="stack" style="border-top:1px solid var(--line);padding-top:6px"><p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>'+(x.ok?'<span class="chip ok">✓ Revisado por ti</span>':(LIVE?'<div class="row"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+ix+'">Está bien</button><button class="btn sm ghost" data-act="ed-open" data-id="'+d.id+'">Corregir</button></div>':''))+'</div>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
-h+=edHtml(d);
+h+=lectHtml(d)+edHtml(d);
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
  if(d.pend.length)h+='<div class="hint">Pendiente de confirmar: '+d.pend.map(esc).join(', ')+'.</div>';
  if(LIVE&&d.carpeta)h+='<a class="btn sm ghost" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Ver fotos en Drive</a>';
@@ -1586,7 +1648,7 @@ function renderMain(){
   else if(S.dtab==='exp')h=driverExp();
   else if(S.dtab==='days')h=driverDays();
   else{
-   h={up:driverUpload,confirm:driverConfirm,result:driverResult,sent:driverSent}[S.screen]?{up:driverUpload,confirm:driverConfirm,result:driverResult,sent:driverSent}[S.screen]():driverUpload();
+   h={up:driverUpload,confirm:driverResult,result:driverResult,sent:driverSent}[S.screen]?{up:driverUpload,confirm:driverResult,result:driverResult,sent:driverSent}[S.screen]():driverUpload();
   }
  }else{
   if(S.openDay)h=masterDetail();
@@ -1594,7 +1656,6 @@ function renderMain(){
  }
 
  if(S.ocrBusy>0&&S.view==='driver'&&S.dtab==='up'&&(S.screen==='up'||S.screen==='confirm'))h=thinkHtml('Un segundo, estoy leyendo las fotos…<br><span style="font-weight:400">Puedes seguir; los números aparecerán solos.</span>','<button class="btn sm ghost" data-act="ocr-skip">Seguir sin esperar</button>')+h;
- if(S.leaveAsk&&S.view==='driver')h='<div class="banner ink"><b>¿Quieres salir?</b><span>No se envía nada. Lo que llevas se queda guardado en este móvil por si quieres seguir luego.</span><div class="row"><button class="btn sm ghost" style="background:var(--surface)" data-act="leave-no">Seguir aquí</button><button class="btn sm pri grow" data-act="leave-yes">Sí, salir</button></div></div>'+h;
  if(LIVE&&S.role){
   if(S.err)h='<div class="banner bad"><span>'+esc(S.err)+'</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="err-x">Cerrar</button></div>'+h;
   if(S.busy&&S.view==='master')h=thinkHtml('Un segundo, estoy pensando…','<button class="btn sm ghost" data-act="wait-skip">Seguir sin esperar</button>')+h;
@@ -1606,7 +1667,9 @@ function renderMain(){
  if(S.draftOffer&&!draftHas())h=draftBanner()+h;
  if(S.camTip)h=camTipHtml()+h;
  if(S.pickLost)h='<div class="banner ink"><b>El móvil cerró la app mientras hacías la foto</b><span>He recuperado lo que llevabas. Haz otra vez esa última foto.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="pick-x">Entendido</button></div>'+h;
- if(S.exitAsk||S.exitMsg)h='<div class="banner ink exitb"><b>'+(S.exitMsg?esc(S.exitMsg):'¿Quieres salir de la app?')+'</b>'+(S.exitMsg?'':'<span>Lo que llevas se queda guardado en este móvil.</span><div class="row"><button class="btn sm ghost" style="background:var(--surface)" data-act="exit-no">Seguir aquí</button><button class="btn sm pri grow" data-act="exit-yes">Sí, salir</button></div>')+'</div>'+h;
+ if(S.exitMsg)h='<div class="banner ink exitb"><b>'+esc(S.exitMsg)+'</b></div>'+h;
+var inFl=S.view==='driver'&&S.dtab==='up'&&(S.screen==='up'||S.screen==='result'||S.screen==='confirm');
+ if(S.leaveAsk||S.exitAsk){var back=inFl&&(S.screen!=='up'||S.upStep>1);h+='<div class="exitmod" role="alertdialog" aria-modal="true"><div class="exitbox"><b>¿Seguro que quieres salir?</b><span>No se envía nada. Lo que llevas se queda guardado en este móvil.</span><div class="stack"><button class="btn pri block" data-act="'+(S.leaveAsk?'leave-no':'exit-no')+'">Seguir aquí</button>'+(back?'<button class="btn ghost block" data-act="exit-back">Retroceder un paso</button>':'')+'<button class="btn bad block" data-act="'+(S.leaveAsk?'leave-yes':'exit-yes')+'">Sí, salir</button></div></div></div>';}
  $('app').innerHTML=h+regFoot()+'<div style="text-align:center;opacity:.45;font-size:11px;margin:14px 0 4px">Versión '+APP_V+'</div>';
 }
 var NAV={a:[null],i:0,leaving:false,busy:false};
@@ -1630,7 +1693,7 @@ function navInit(){
    S.exitAsk=true;render(true);window.scrollTo(0,0);return;
   }
   var inFlow=S.view==='driver'&&(S.screen==='up'||S.screen==='confirm'||S.screen==='result')&&!cur.ov&&!cur.cc;
-  if(inFlow&&n<NAV.i){try{history.pushState({n:NAV.i},'');}catch(x){}if(S.leaveAsk){S.leaveAsk=false;render(true);return;}if(S.screen==='result'){S.screen='confirm';render();window.scrollTo(0,0);return;}if(S.screen==='confirm'){S.screen='up';S.upStep=4;render();window.scrollTo(0,0);return;}if(S.screen==='up'&&S.upStep>1&&!(S.mine&&S.upStep<=2)){S.upStep--;render();window.scrollTo(0,0);return;}S.leaveAsk=true;render(true);window.scrollTo(0,0);return;}
+  if(inFlow&&n<NAV.i){try{history.pushState({n:NAV.i},'');}catch(x){}if(S.leaveAsk){S.leaveAsk=false;render(true);return;}if(S.screen==='result'||S.screen==='confirm'){S.screen='up';S.upStep=4;render();window.scrollTo(0,0);return;}if(S.screen==='up'&&S.upStep>1&&!(S.mine&&S.upStep<=2)){S.upStep--;render();window.scrollTo(0,0);return;}S.leaveAsk=true;render(true);window.scrollTo(0,0);return;}
   var sn=NAV.a[n];if(!sn)return;
   NAV.busy=true;NAV.i=n;
   if(S.chk)chkClose(true);
@@ -1646,14 +1709,15 @@ function dinoSync(){}
 var THINKN=0;
 function thinkHtml(msg,skip){
  var bt=skip?'<span class="wslow"><span>Tarda más de lo normal, pero sigue en marcha.</span><span class="row">'+skip+'</span></span>':'';
- var k=(THINKN++)%2+1,sc;
- var TX='<g class="tx"><g class="tj"><path d="M8 27v-6c0-2 1-3 3-3l9-1 6-7h16l6 7h9c3 0 5 2 5 4v6z" style="fill:#16161a"/><path d="M23 11h8v7h-12zM33 11h8l4 7h-12z" style="fill:#FFC700"/><path d="M18 18h9v9H12v-6zM45 18h6v9H45z" style="fill:#FFC700" opacity=".0"/><rect x="25" y="4" width="10" height="4" rx="1" style="fill:#FFC700"/><rect x="8" y="22" width="48" height="3" style="fill:#FFC700"/><circle class="wl" cx="19" cy="28" r="5" style="fill:#16161a;stroke:#FFC700" stroke-width="1.5"/><circle class="wl" cx="46" cy="28" r="5" style="fill:#16161a;stroke:#FFC700" stroke-width="1.5"/></g></g>';
- var road='<line class="rd" x1="0" y1="38" x2="120" y2="38" stroke="currentColor" stroke-width="2" stroke-dasharray="8 8" opacity=".45"/>';
- var sign='<g class="sg"><rect x="1.2" y="-14" width="1.8" height="14" fill="currentColor"/><circle cx="2" cy="-16" r="6" fill="#d12"/><rect x="-2" y="-17" width="8" height="2.4" fill="#fff"/></g>';
- if(k===0)sc=road+'<g transform="translate(0 38)"><g class="s1">'+sign+'</g><g class="s2">'+sign+'</g></g><g transform="translate(14 6)">'+TX+'</g>';
- else if(k===1)sc=road+'<g class="pe" transform="translate(96 38)"><circle cx="0" cy="-22" r="3.5" fill="currentColor"/><path d="M0 -18v10M0 -8l-3 8M0 -8l3 8" stroke="currentColor" stroke-width="2.2" fill="none"/><path class="arm" d="M0 -16l6 -8" stroke="currentColor" stroke-width="2.2" fill="none"/></g><g class="hail">'+TX+'</g>';
- else sc=road+'<g transform="translate(100 38)"><rect x="0" y="-30" width="3" height="30" fill="currentColor"/><rect x="-4" y="-40" width="11" height="22" rx="3" fill="#222"/><circle class="lr" cx="1.5" cy="-34" r="3" fill="#e22"/><circle class="lg" cx="1.5" cy="-24" r="3" fill="#2c5"/></g><g class="wait" transform="translate(0 6)">'+TX+'</g>';
- return '<div class="think" role="status" aria-live="polite"><svg viewBox="0 0 120 44" aria-hidden="true">'+sc+'</svg><span class="wst"><span>'+msg+'</span>'+bt+'</span></div>';
+ var TX='<g class="tx"><g class="tj"><path d="M8 27v-6c0-2 1-3 3-3l9-1 6-7h16l6 7h9c3 0 5 2 5 4v6z" style="fill:#16161a"/><path d="M23 11h8v7h-12zM33 11h8l4 7h-12z" style="fill:#FFC700"/><rect x="25" y="4" width="10" height="4" rx="1" style="fill:#FFC700"/><rect x="8" y="22" width="48" height="3" style="fill:#FFC700"/><circle class="wl" cx="19" cy="28" r="5" style="fill:#16161a;stroke:#FFC700" stroke-width="1.5"/><circle class="wl" cx="46" cy="28" r="5" style="fill:#16161a;stroke:#FFC700" stroke-width="1.5"/></g></g>';
+ var sc='<line class="rd" x1="0" y1="39" x2="240" y2="39" stroke="currentColor" stroke-width="2" stroke-dasharray="8 8" opacity=".45"/>'
+  +'<g class="bg"><g transform="translate(30 39)"><rect x="0" y="-16" width="2" height="16" fill="currentColor" opacity=".5"/><rect x="-4" y="-22" width="10" height="7" rx="2" fill="currentColor" opacity=".5"/></g><g transform="translate(150 39)"><rect x="0" y="-12" width="2" height="12" fill="currentColor" opacity=".5"/><circle cx="1" cy="-16" r="6" fill="currentColor" opacity=".35"/></g></g>'
+  +'<g transform="translate(112 39)"><rect x="0" y="-30" width="3" height="30" fill="currentColor"/><rect x="-4" y="-40" width="11" height="22" rx="3" fill="#222"/><circle class="lr" cx="1.5" cy="-34" r="3" fill="#e22"/><circle class="lg" cx="1.5" cy="-24" r="3" fill="#2c5"/></g>'
+  +'<g class="oc" transform="translate(0 4)"><rect x="0" y="22" width="26" height="8" rx="3" fill="currentColor" opacity=".55"/><circle cx="6" cy="31" r="3" fill="currentColor" opacity=".7"/><circle cx="20" cy="31" r="3" fill="currentColor" opacity=".7"/></g>'
+  +'<g class="pe2" transform="translate(206 39)"><circle cx="0" cy="-22" r="3.5" fill="currentColor"/><path d="M0 -18v10M0 -8l-3 8M0 -8l3 8" stroke="currentColor" stroke-width="2.2" fill="none"/><path class="arm" d="M0 -16l6 -8" stroke="currentColor" stroke-width="2.2" fill="none"/></g>'
+  +'<g class="tx2"><g transform="translate(0 6)">'+TX+'</g></g>';
+ var top=Math.max(64,Math.min((S.clickY||220)+16,(window.innerHeight||700)-150));
+ return '<div class="think thinkf" style="top:'+top+'px" role="status" aria-live="polite"><svg viewBox="0 0 240 44" aria-hidden="true">'+sc+'</svg><span class="wst"><span>'+msg+'</span>'+bt+'</span></div>';
 }
 function savePos(){if(!(LIVE&&S.role==='master'&&S.view==='master'))return;try{localStorage.setItem('turnos_pos',JSON.stringify({t:S.mtab,s:S.msub||'mes',m:S.mmes||'',d:S.dfilter==null?null:S.dfilter}));}catch(e){}}
 function restorePos(){try{var q=JSON.parse(localStorage.getItem('turnos_pos')||'null');if(q&&['cc','panel','dias','gastos','prob','users','mas'].indexOf(q.t)>=0){S.mtab=q.t;S.msub=q.s||'mes';if(q.m)S.mmes=q.m;if(q.d!=null)S.dfilter=q.d;}}catch(e){}}
@@ -1710,6 +1774,19 @@ var LECTOR=(function(){var root={};
  }
  function uniq(a){var o={};a.forEach(function(v){if(v!=null&&isFinite(v))o[v]=(o[v]||0)+1;});return Object.keys(o).map(function(k){return {v:+k,n:o[k]};});}
  function toMin(h){var p=h.split(':');return +p[0]*60+ +p[1];}
+function shiftInfo(t){
+  var o={turno:null,nserv:null,rows:0,t3n:null,blk:false,tk:{},libre:null,ocup:null},m,re,dv=function(x){return parseFloat(String(x).replace(',','.'));};
+  re=/T\.?\s*Km\s*([1-6])\+?\s*:?\s*(\d{1,3}[.,]\d)(?!\d)/gi;while((m=re.exec(t)))o.tk[m[1]]=dv(m[2]);
+  if((m=/km\s*libre\W{0,6}(\d{1,3}[.,]\d)(?!\d)/i.exec(t)))o.libre=dv(m[1]);
+  if((m=/km\s*ocupado\W{0,6}(\d{1,3}[.,]\d)(?!\d)/i.exec(t)))o.ocup=dv(m[1]);
+  if((m=/turno\W{0,4}(\d{4,6})\b/i.exec(t)))o.turno=m[1];
+  if((m=/n[oº°]?\.?\s*servicios\W{0,6}(\d{1,3})(?![\d.,])/i.exec(t)))o.nserv=+m[1];
+  var a=t.search(/listado\s*de\s*carreras/i),b=t.search(/informaci[oó]n\s*de\s*turno/i);if(a<0)a=0;
+  if(b>a){var blk=t.slice(a,b);o.blk=true;
+   o.rows=(blk.match(/\b\d{1,2}\s*[:;]\s*\d{2}\s+\d{1,2}\s*[:;]\s*\d{2}\b/g)||[]).length;
+   o.t3n=(blk.match(/(?:^|[^\d.,])[0O]\s*[.,]\s*00(?!\d)/g)||[]).length;}
+  return o;
+ }
  function readTicket(texts){
   var all={horaIni:[],horaFin:[],libre:[],ocup:[],total:[],totalP:[],hdr:[],rend:[],tk:[],fecha:[]},sums=[],zs=[];
   texts.forEach(function(t){var c=ticketCand(t),s=0,seen={};zs.push(c.zero);for(var k in all)if(k!=='tk')all[k]=all[k].concat(c[k]);
@@ -1736,7 +1813,7 @@ var LECTOR=(function(){var root={};
       if(!best||ed<best.ed||(ed===best.ed&&sc>best.sc))best={t:t.v,l:l.v,o:o.v,ed:ed,sc:sc,tn:t.n,te:t.e,ln:l.n,le:l.e,on:o.n,oe:o.e};
      });});});
    if(best){out.impresora=best.t;out.kmTotales=Math.round((best.l+best.o)*10)/10;
-     var cross=haveR||haveS;q.impresora={ok:cross&&haveR&&!partial&&best.tn>=2&&!best.te,n:best.tn,of:all.total.length,fix:best.ed>0};q.kmTotales={ok:haveR&&(haveS||(best.ln>=2&&best.on>=2&&!best.le&&!best.oe)),n:1,of:1,fix:best.ed>0};}
+     var cross=haveR||haveS;q.impresora={ok:cross&&haveR&&!partial&&best.tn>=2&&!best.te,n:best.tn,of:all.total.length,fix:best.ed>0};q.kmTotales={ok:haveR&&(haveS||(best.ln>=2&&best.on>=2&&!best.le&&!best.oe)),n:1,of:1,fix:best.ed>0};out.kmLibre=best.l;out.kmOcup=best.o;q.kmLibre=q.kmOcup=q.kmTotales;}
    else{ /* nada cuadra: devolvemos lo más votado pero marcado como dudoso */
      var t0=mode(all.total),l0=mode(all.libre),o0=mode(all.ocup);
      if(t0){out.impresora=t0.v;q.impresora={ok:false,n:t0.n,of:t0.of};}
@@ -1745,8 +1822,26 @@ var LECTOR=(function(){var root={};
    var t1=mode(all.total,function(v){return v>=10&&v<=1500;});if(t1){out.impresora=t1.v;q.impresora={ok:false,n:t1.n,of:t1.of};}
    var l1=mode(all.libre),o1=mode(all.ocup);if(l1&&o1){out.kmTotales=Math.round((l1.v+o1.v)*10)/10;q.kmTotales={ok:false,n:1,of:1};}
   }
+  var si=texts.map(shiftInfo),extra={};
+  var tn=mode(si.map(function(x){return x.turno;}));if(tn){out.turnoNo=tn.v;q.turnoNo={ok:true,n:tn.n,of:si.length};}
+  var ns=mode(si.map(function(x){return x.nserv;})),rw=mode(si.map(function(x){return x.rows;}).filter(function(v){return v>0;}));
+  if(ns){out.nServ=ns.v;q.nServ={ok:!rw||rw.v===ns.v,n:ns.n,of:si.length};}else if(rw){out.nServ=rw.v;q.nServ={ok:false,n:rw.n,of:si.length};}
+  var tkv={};texts.forEach(function(t){var c=ticketCand(t);c.tk.forEach(function(p){(tkv[p[0]]=tkv[p[0]]||[]).push(p[1]);});});
+  si.forEach(function(x){for(var k in x.tk)(tkv[k]=tkv[k]||[]).push(x.tk[k]);});
+  if(out.kmOcup==null){var lo=mode(si.map(function(x){return x.ocup;})),ll=mode(si.map(function(x){return x.libre;}));
+   if(lo){out.kmOcup=lo.v;q.kmOcup={ok:false,n:lo.n,of:si.length};}
+   if(ll){out.kmLibre=ll.v;q.kmLibre={ok:false,n:ll.n,of:si.length};}
+   if(lo&&ll&&out.kmTotales==null){out.kmTotales=Math.round((lo.v+ll.v)*10)/10;q.kmTotales={ok:false,n:1,of:1};}}
+  var tsum=0,tcnt=0;for(var ti=1;ti<=6;ti++){var tm=mode(tkv[ti]||[]);if(tm){out['tk'+ti]=tm.v;tsum+=tm.v;tcnt++;}}
+  var okOc=out.kmOcup!=null&&tcnt>0&&Math.abs(tsum-out.kmOcup)<=1.5;
+  if(okOc&&q.kmOcup&&!q.kmOcup.ok)q.kmOcup.ok=true;
+  for(var tj=1;tj<=6;tj++)if(out['tk'+tj]!=null)q['tk'+tj]={ok:okOc,n:1,of:1};
+  var tz=si.filter(function(x){return x.blk;});
+  if(tz.length){var t3=mode(tz.map(function(x){return x.t3n;}));out.tarifa3Decl=t3.v;
+   var k3=out.tk3,cons=(k3!=null)?((t3.v>0)===(k3>0.05)):false;
+   q.tarifa3Decl={ok:cons&&okOc,n:t3.n,of:tz.length};extra.t3n=t3.v;extra.rows=rw?rw.v:0;}
   var fe=mode(all.fecha);
-  return {f:out,q:q,cands:{impresora:(typeof Ts!=='undefined'?Ts:[]).slice().sort(function(a,b){return b.n-a.n;}).map(function(x){return x.v;}).slice(0,4)},fecha:fe?fe.v:null,fechaOk:!!(fe&&fe.n>=2),fechaN:fe?fe.n:0,extra:{zero:(mode(zs)||{v:0}).v}};
+  return {f:out,q:q,cands:{impresora:(typeof Ts!=='undefined'?Ts:[]).slice().sort(function(a,b){return b.n-a.n;}).map(function(x){return x.v;}).slice(0,4)},fecha:fe?fe.v:null,fechaOk:!!(fe&&fe.n>=2),fechaN:fe?fe.n:0,extra:extra};
  }
  /* TPV: importe total */
  function readTPV(texts){
@@ -1997,7 +2092,7 @@ function kmHelper(){
  var k=S.km2=S.km2||{};
  return '<div class="row" style="grid-column:1/-1;flex-wrap:wrap"><span class="small muted">¿No lo lee? Súmalos:</span><input class="inp" style="width:110px" data-km="libre" type="text" inputmode="decimal" placeholder="Km libre" aria-label="Km libre" value="'+esc(k.libre||'')+'" autocomplete="off"><span>+</span><input class="inp" style="width:110px" data-km="ocup" type="text" inputmode="decimal" placeholder="Km ocupado" aria-label="Km ocupado" value="'+esc(k.ocup||'')+'" autocomplete="off"></div>';
 }
-function t3Picked(){return !!(S.t3picked||(S.ocr&&S.ocr.tarifa3Decl&&S.ocr.tarifa3Decl.typed));}
+function t3Picked(){var o=S.ocr&&S.ocr.tarifa3Decl;return !!(S.t3picked||(o&&(o.typed||o.ok||o.conf)));}
 function t3Chips(){
  var cur=num(S.form.tarifa3Decl),pk=t3Picked();
  var h='<div class="lb" style="margin-top:6px">¿Cuántos servicios de Tarifa 3 pone el ticket? Toca el número</div><div class="chips">'+[0,1,2,3].map(function(n){return '<button type="button" class="pick" data-act="t3-set" data-v="'+n+'" aria-pressed="'+(pk&&cur===n)+'">'+n+'</button>';}).join('')+'</div>';
@@ -2078,6 +2173,7 @@ function act(a,d){
   case 'cam-go':{var ck=S.camTip&&S.camTip.k;S.camTip=null;render(true);if(ck)camOpen(ck);return;}
   case 'cam-never':{var ck2=S.camTip&&S.camTip.k;tipsSet();S.camTip=null;render(true);if(ck2)camOpen(ck2);return;}
   case 'cam-x':S.camTip=null;render(true);return;
+  case 'exit-back':{S.leaveAsk=false;S.exitAsk=false;if(S.screen==='result'||S.screen==='confirm'){S.screen='up';S.upStep=4;}else if(S.upStep>1)S.upStep--;render();window.scrollTo(0,0);return;}
   case 'exit-no':S.exitAsk=false;render(true);return;
   case 'exit-yes':S.exitAsk=false;NAV.leaving=true;S.exitMsg='';try{history.go(-(NAV.i+2));}catch(e){}setTimeout(function(){S.exitMsg='Ya puedes cerrar la app con el botón de apps recientes de tu móvil.';NAV.leaving=false;render(true);},500);return;
   case 'chk-zin':chkZoom(1.5);return;
@@ -2101,14 +2197,14 @@ function act(a,d){
   case 'leave-no':S.leaveAsk=false;render(true);return;
   case 'leave-yes':regPing('ABANDONADO');S.regId=null;S.regLast=null;S.leaveAsk=false;if(S.mine){S.mine=false;S.view='master';S.mtab='panel';S.screen='home';S.dtab='home';}else{S.dtab='home';S.screen='home';S.sendErr='';S.dupAsk=false;}render();window.scrollTo(0,0);return;
   case 'exit-result':S.dtab='home';S.screen='home';S.sendErr='';S.dupAsk=false;render();window.scrollTo(0,0);return;
-  case 'to-confirm':S.dtab='up';S.screen='confirm';render();return;
+  case 'to-confirm':S.dtab='up';S.screen='result';S.sendErr='';render();window.scrollTo(0,0);return;
   case 'back-up':S.screen='up';S.upStep=4;render();return;
   case 'to-result':S.screen='result';S.sendErr='';render();return;
   case 'motivo':var i=S.motivos.indexOf(d.m);if(i>-1)S.motivos.splice(i,1);else S.motivos.push(d.m);var n=$('nota');if(n)S.texto=n.value;render(true);return;
   case 'demo':
    ['taximetro','tpv','freenow'].forEach(function(k){S.slots[k]='ok';applyRead(k);});
    S.slots.servicios='ok';S.caps=d.m==='ok'?2:1;S.form.total=471.3;S.form.efectivo=d.m==='ok'?182.36:150;
-   S.dtab='up';S.screen='confirm';render();return;
+   S.dtab='up';S.screen='result';render();return;
   case 'send':send();return;
   case 'use-ticket-date':if(S.ticketDate){S.mineDate=S.ticketDate;}render(true);return;
   case 'dfilter':S.dfilter=(d.v==='all')?'all':+d.v;render(true);return;
@@ -2118,6 +2214,11 @@ function act(a,d){
   case 'fn-tipo':{var xt=(S.fn||[])[+d.i];if(xt){xt.taxi=(d.v==='taxi');xt.cerrado=(d.v==='cerrado');xt.auto=false;xt.conf=false;fnSync();render(true);}return true;}
   case 'fn-ok':{var x3=(S.fn||[])[+d.i];if(x3){x3.conf=true;render(true);}return true;}
   case 'fn-okall':(S.fn||[]).forEach(function(x4){if(!x4.conf&&!fnRare(x4)&&fnNum(x4.imp)>0)x4.conf=true;});render(true);return true;
+  case 'goto-step':{var gn=+d.n;S.dtab='up';if(gn<=4){S.screen='up';S.upStep=gn;}else S.screen='result';render();window.scrollTo(0,0);return;}
+  case 'ed-f':S.edF=S.edF||{};S.edF[d.k]=true;render(true);return;
+  case 't3-dec':case 't3-inc':{var c3=num(S.form.tarifa3Decl);if(!isFinite(c3))c3=0;c3=Math.max(0,c3+(a==='t3-inc'?1:-1));S.form.tarifa3Decl=c3;S.t3picked=true;S.ocr=S.ocr||{};var o3=S.ocr.tarifa3Decl||(S.ocr.tarifa3Decl={});o3.typed=true;o3.ok=true;render(true);return;}
+  case 't3-ok':S.t3picked=true;render(true);return;
+  case 'fn-none':S.slots.freenow='nada';S.fn=[];S.thumbs.freenow=[];S.files.freenow=[];S.upStep=2;render();window.scrollTo(0,0);return;
   case 'step-next':if(S.upStep<4){S.upStep++;beep(1);render();}return;
   case 'step-back':if(S.upStep>1){S.upStep--;render();}return;
   case 'sound':S.sound=!S.sound;if(S.sound)beep(1);render(true);return;
@@ -2273,7 +2374,7 @@ function dayId(d){return (+d.uid)*100000+Math.round(Date.parse(d.fecha+'T12:00:0
 function mapDay(d){
  var dt=d.datos||{},f=dt.form||{},caps=+dt.caps||0,pend=dt.pend||[],pct=(d.uid===1)?0:(d.pct||45);
  var res=verify(f,caps,pct,pend,d.uid===1);
- return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||'',carga:dt.carga||null,reg:dt.reg||'',fcheck:d.fechaCheck||'',enviado:d.enviado||'',hist:d.hist||[],volcado:d.volcado||''};
+ return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||'',carga:dt.carga||null,reg:dt.reg||'',fcheck:d.fechaCheck||'',enviado:d.enviado||'',hist:d.hist||[],volcado:d.volcado||'',lectOk:dt.lectOk||''};
 }
 function mapReq(r){
  var day=S.days.filter(function(x){return x.key===r.clave;})[0],st=String(r.estado||'').toUpperCase(),e;
@@ -2555,6 +2656,7 @@ function canAutoRefresh(){
 }
 
 document.addEventListener('click',function(e){var b=e.target.closest('[data-act]');if(!b)return;act(b.dataset.act,b.dataset);});
+document.addEventListener('click',function(e){try{if(S)S.clickY=e.clientY;}catch(x){}},true);
 document.addEventListener('input',function(e){
  var t=e.target;
  if(!t.dataset)return;
