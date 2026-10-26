@@ -385,7 +385,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='2.01';
+var APP_V='2.02';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -998,18 +998,19 @@ function driverUpload(){
 var FN_MAX=30;
 function fnNew(){return {imp:'',metodo:'app',taxi:false,cerrado:false,conf:false,cands:[]};}
 function fnParse(t){
- var T=String(t||'').replace(/\r/g,''),N='(\\d{1,4}[.,]\\d{2})';
+ var T=String(t||'').replace(/\r/g,'').replace(/(comisi[oó]n(?!\s*total)\s*-?\s*\d{1,3})\s+(\d{2})\s*[€e]/ig,'$1,$2 €'),N='(\\d{1,4}[.,]\\d{2})';
  function cv(x){return x==null?null:parseFloat(String(x).replace(',','.'));}
  function first(re,skip){var g=new RegExp(re.source,'ig'),m;while((m=g.exec(T))){if(skip&&skip(T,m))continue;return cv(m[1]);}return null;}
  var all=[],ga=new RegExp(N,'g'),mm;while((mm=ga.exec(T)))all.push(cv(mm[1]));
  var cuadra=function(x){return all.some(function(a){return Math.abs(x-a)<0.03;});};
  /* importes que cuelgan de «Trayecto bonificado»: NUNCA son el importe del servicio */
- var bon=[],gb=new RegExp('b[o0]n[il1]f\\w*[^\\d\\n]{0,14}'+N,'ig'),mb;while((mb=gb.exec(T)))bon.push(cv(mb[1]));
+ var bon=[],gb=new RegExp('b[o0]n[il1]f\\w*[^\\n]{0,32}?'+N,'ig'),mb;while((mb=gb.exec(T)))bon.push(cv(mb[1]));
  var isBon=function(x){return bon.some(function(b){return Math.abs(b-x)<0.005;});};
  var pagoApp=/pago\s*v\S{0,3}\s*a\S{1,3}/i.test(T);
  var gross=first(new RegExp('(?:pago\\s*v\\S{0,3}\\s*a\\S{1,3}|trayecto(?!\\s*(?:b[o0]n|compl|canc)))[^\\d\\n]{0,14}'+N),function(tx,m){var b=tx.slice(Math.max(0,m.index-6),m.index).toLowerCase();return /del\s*$/.test(b)||/completado|cancelado|b[o0]n[il1]f/i.test(m[0]);});
  var com=first(new RegExp('comisi[oó]n(?!\\s*total)[^\\d\\n]{0,14}'+N));
  if(com==null)com=first(new RegExp('comisi[oó]n[^\\d\\n]{0,14}'+N));
+ if(com==null&&/precio\s*(?:cerrado|fijo)/i.test(T)){var cpl=first(new RegExp('trayecto\\s*completado[^\\d\\n]{0,6}'+N));var gg=first(new RegExp('(?:pago\\s*v\\S{0,3}\\s*a\\S{1,3}|pago\\s*efectivo[^\\d\\n]{0,12})[^\\d\\n]{0,14}'+N));if(cpl!=null&&gg!=null&&gg>cpl&&gg-cpl<gg*0.4)com=Math.round((gg-cpl)*100)/100;}
  var prop=first(new RegExp('propinas?[^\\d\\n]{0,10}'+N));
  var net=null,ni=T.search(/ingresos\s*netos/i);
  if(ni>=0){var seg=T.slice(ni+12,ni+200).replace(/comisi[oó]n\s*total[^\n\d]{0,6}-?\s*\d{1,4}[.,]\d{2}/ig,' ').replace(/^[^\n]*de\s*comisiones/i,' ');seg=seg.replace(/(\d)\s+(\d[.,]\d{2})/g,'$1$2');var nm=new RegExp(N).exec(seg);if(nm)net=cv(nm[1]);}
@@ -1029,7 +1030,7 @@ function fnParse(t){
  if(prop!=null&&prop>0)r.prop=prop;
  if(com!=null)r.com=com;if(net!=null)r.net=net;
  /* v2.01 (día referente 25/10): precio cerrado = lo que cobra el taxista tras la comisión (+ bonificado si lo hay); taxímetro = importe bruto SIN descontar comisión */
- if(r.imp!=null&&!r.curso){r.gross=r.imp;if(bon.length)r.bon=bon[0];
+ if(r.imp!=null&&!r.curso){r.gross=r.imp;if(bon.length)r.bon=bon[0];if(com!=null)r.netP=Math.round((r.imp-com)*100)/100;
   if(cer&&com!=null&&r.imp>com){var nn=Math.round((r.imp-com+(r.bon||0))*100)/100;r.imp=nn;if(r.q!=='ok'&&cuadra(r.gross-com))r.q='ok';}}
  var cn={};all.forEach(function(v){if(v>0.5&&v<=1500&&!isBon(v)){var k=v.toFixed(2);cn[k]=(cn[k]||0)+1;}});
  r.cands=Object.keys(cn).filter(function(k){return !(com!=null&&Math.abs(+k-com)<0.005)&&!(net!=null&&Math.abs(+k-net)<0.005)&&!(prop!=null&&prop>0&&Math.abs(+k-prop)<0.005);}).sort(function(a,b){return cn[b]-cn[a]||(+b)-(+a);}).slice(0,4).map(Number);
@@ -1044,7 +1045,7 @@ function fnReadFile(file){
   function lineBox(d,re,w,h){var ls=(d.lines||[]).filter(function(l){return re.test(l.text||'');});if(!ls.length)return null;var l=ls[0],ws=(l.words||[]).filter(function(x){return !/\d/.test(x.text||'')&&x.bbox;}),u;
    if(ws.length){u={x0:1e9,y0:1e9,x1:0,y1:0};ws.forEach(function(x){u.x0=Math.min(u.x0,x.bbox.x0);u.y0=Math.min(u.y0,x.bbox.y0);u.x1=Math.max(u.x1,x.bbox.x1);u.y1=Math.max(u.y1,x.bbox.y1);});}else u=l.bbox;
    return u?fr(u,w,h):null;}
-  function fnLoc(r,d,w,h){r.ar=h0/w0;if(r.imp==null)return;var b=oFindNum(d.words,r.imp)||(r.gross!=null?oFindNum(d.words,r.gross):null),loc={};if(b)loc.imp=fr(b,w,h);
+  function fnLoc(r,d,w,h){r.ar=h0/w0;if(r.imp==null)return;var b=oFindNum(d.words,r.imp)||(r.netP!=null?oFindNum(d.words,r.netP):null)||(r.gross!=null?oFindNum(d.words,r.gross):null),loc={};if(b)loc.imp=fr(b,w,h);
    var m=r.pago==='app'?lineBox(d,/pago\s*v\S{0,3}\s*a\S{1,3}/i,w,h):lineBox(d,/efectivo|tarjeta|dat.fono/i,w,h);if(m)loc.met=m;
    if(r.cerrado){var f=lineBox(d,/precio\s*(?:cerrado|fijo)/i,w,h);if(f)loc.fijo=f;}
    if(loc.imp||loc.met||loc.fijo)r.loc=loc;}
@@ -1072,7 +1073,7 @@ function fnScan(start,files){
   ocrQ=ocrQ.then(function(){return gen===S.gen?fnReadFile(f):null;}).then(function(r){
    if(gen!==S.gen||!r)return;card.reading=false;
    card.cands=r.cands||[];
-   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.gross=(r.gross!=null?r.gross:null);card.com=(r.com!=null?r.com:null);card.bon=(r.bon!=null?r.bon:null);card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
+   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.gross=(r.gross!=null?r.gross:null);card.netP=(r.netP!=null?r.netP:null);card.com=(r.com!=null?r.com:null);card.bon=(r.bon!=null?r.bon:null);card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
    if(r.cerrado){card.cerrado=true;card.taxi=false;}else if(r.imp!=null){card.taxi=true;card.cerrado=false;card.auto=true;}
    if(r.directo)card.metodo='efectivo'; /* «Pago efectivo/tarjeta» = servicio cobrado en efectivo: suma como cualquier servicio (taxEfe si es de taxímetro), según el Excel */
    if(r.imp==null&&String(card.imp)==='')card.noleido=true;
@@ -1116,6 +1117,7 @@ function fnCard(x,i,u){
  else if(!x.ocr&&String(x.imp)===''&&u)h+='<div class="banner bad"><b>Tengo dudas con esta captura</b><span>No he podido leer el importe con seguridad. Mira la captura y elige uno de los importes de abajo o escríbelo.</span></div>';
  else if(x.curso&&x.ocr)h+='<div class="small"><span class="chip warn">Servicio sin terminar en la captura: importe del viaje, sin comisión</span></div>';
  else if(x.ocr)h+='<div class="small"><span class="chip '+(x.ocr==='ok'?'ok':'warn')+'">'+(x.ocr==='ok'?'Leído y cuadra (precio fijo: importe − comisión'+(x.bon?' + bonificado':'')+')':'Leído de la captura: compruébalo')+'</span></div>';
+ if(x.cerrado&&x.gross!=null&&x.com!=null&&!x.typed)h+='<div class="small"><span class="chip mute">Precio fijo: '+eur(x.gross)+' − comisión '+eur(x.com)+(x.bon?' + bonificado '+eur(x.bon):'')+' = '+eur(fnNum(x.imp))+'</span></div>';
  if(x.auto&&!x.directo&&!x.cerrado&&!x.conf)h+='<div class="small"><span class="chip warn">Sin «precio cerrado» en la captura: marcado como hecho con taxímetro</span></div>';
  if(u&&x.box&&fnNum(x.imp)>0)h+=cropHtml(u,x.box,x.ar||1.5);
  if(u&&fnNum(x.imp)>0)h+='<div class="small"><button class="btn sm ghost" data-act="fn-zoom" data-i="'+i+'">Ver la captura grande con los recuadros</button></div>';
