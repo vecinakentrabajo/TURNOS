@@ -385,7 +385,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='2.02';
+var APP_V='2.03';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -1028,10 +1028,11 @@ function fnParse(t){
  else if(net!=null&&com!=null){r.imp=Math.round((net+com-(prop||0))*100)/100;r.q='revisar';}
  else if(tot!=null&&tot>0&&tot<2000&&!isBon(tot)){r.imp=tot;r.q='ok';r.curso=!/trayecto\s*completado/i.test(T);}
  if(prop!=null&&prop>0)r.prop=prop;
+ r.bonW=/b[o0]n[il1]f/i.test(T);
  if(com!=null)r.com=com;if(net!=null)r.net=net;
  /* v2.01 (día referente 25/10): precio cerrado = lo que cobra el taxista tras la comisión (+ bonificado si lo hay); taxímetro = importe bruto SIN descontar comisión */
  if(r.imp!=null&&!r.curso){r.gross=r.imp;if(bon.length)r.bon=bon[0];if(com!=null)r.netP=Math.round((r.imp-com)*100)/100;
-  if(cer&&com!=null&&r.imp>com){var nn=Math.round((r.imp-com+(r.bon||0))*100)/100;r.imp=nn;if(r.q!=='ok'&&cuadra(r.gross-com))r.q='ok';}}
+  if(cer&&com!=null&&r.imp>com){var nn=Math.round((r.imp-com+(r.bon||0))*100)/100;r.imp=nn;if(r.q!=='ok'&&cuadra(r.gross-com))r.q='ok';if(r.bonW&&!bon.length)r.q='revisar';}}
  var cn={};all.forEach(function(v){if(v>0.5&&v<=1500&&!isBon(v)){var k=v.toFixed(2);cn[k]=(cn[k]||0)+1;}});
  r.cands=Object.keys(cn).filter(function(k){return !(com!=null&&Math.abs(+k-com)<0.005)&&!(net!=null&&Math.abs(+k-net)<0.005)&&!(prop!=null&&prop>0&&Math.abs(+k-prop)<0.005);}).sort(function(a,b){return cn[b]-cn[a]||(+b)-(+a);}).slice(0,4).map(Number);
  return r;
@@ -1057,10 +1058,13 @@ function fnReadFile(file){
    if(n===3)g=LECTOR.prep(g,tw,th,40).norm;
    return ocrRec(wk,ocrCanvas(g,tw,th),n===3?4:6).then(function(d){var r=fnParse(d.text);fnLoc(r,d,tw,th);if(window.TURNOS_TEST)r.txt=d.text;return r;});
   }
-  return pase(1).then(function(r1){if(r1.imp!=null&&r1.q==='ok')return r1;
+  /* v2.03: en precio fijo sin bonificado leído se prueba otra pasada (el renglón del bonificado es gris claro y a veces no sale en la primera) */
+  function sc(x){return x.imp==null?-1:(x.q==='ok'?2:0)+((x.cerrado&&x.bon!=null)?1:0);}
+  function listo(x){return x.imp!=null&&x.q==='ok'&&!(x.cerrado&&x.bon==null&&x.bonW);}
+  return pase(1).then(function(r1){if(listo(r1))return r1;
    return pase(2).then(function(r2){var best=r1;
-    function mejor(x){if(x.imp!=null&&(best.imp==null||(x.q==='ok'&&best.q!=='ok')))best=x;else if(best.imp==null&&x.prop!=null&&best.prop==null)best.prop=x.prop;}
-    mejor(r2);if(best.imp!=null&&best.q==='ok')return best;
+    function mejor(x){if(sc(x)>sc(best))best=x;else if(best.imp==null&&x.prop!=null&&best.prop==null)best.prop=x.prop;}
+    mejor(r2);if(listo(best))return best;
     return pase(3).then(function(r3){mejor(r3);if(r1!==best&&r1.prop!=null&&best.prop==null)best.prop=r1.prop;return best;});});});
  });
 }
@@ -1073,7 +1077,7 @@ function fnScan(start,files){
   ocrQ=ocrQ.then(function(){return gen===S.gen?fnReadFile(f):null;}).then(function(r){
    if(gen!==S.gen||!r)return;card.reading=false;
    card.cands=r.cands||[];
-   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.gross=(r.gross!=null?r.gross:null);card.netP=(r.netP!=null?r.netP:null);card.com=(r.com!=null?r.com:null);card.bon=(r.bon!=null?r.bon:null);card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
+   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.gross=(r.gross!=null?r.gross:null);card.netP=(r.netP!=null?r.netP:null);card.bonW=!!r.bonW;card.com=(r.com!=null?r.com:null);card.bon=(r.bon!=null?r.bon:null);card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
    if(r.cerrado){card.cerrado=true;card.taxi=false;}else if(r.imp!=null){card.taxi=true;card.cerrado=false;card.auto=true;}
    if(r.directo)card.metodo='efectivo'; /* «Pago efectivo/tarjeta» = servicio cobrado en efectivo: suma como cualquier servicio (taxEfe si es de taxímetro), según el Excel */
    if(r.imp==null&&String(card.imp)==='')card.noleido=true;
@@ -1121,6 +1125,7 @@ function fnCard(x,i,u){
  if(x.auto&&!x.directo&&!x.cerrado&&!x.conf)h+='<div class="small"><span class="chip warn">Sin «precio cerrado» en la captura: marcado como hecho con taxímetro</span></div>';
  if(u&&x.box&&fnNum(x.imp)>0)h+=cropHtml(u,x.box,x.ar||1.5);
  if(u&&fnNum(x.imp)>0)h+='<div class="small"><button class="btn sm ghost" data-act="fn-zoom" data-i="'+i+'">Ver la captura grande con los recuadros</button></div>';
+ if(x.cerrado&&x.gross!=null&&x.com!=null&&!x.directo){if(x.bonW&&!x.bon&&!x.conf)h+='<div class="banner warn"><b>Veo «Trayecto bonificado» pero no he leído su importe</b><span>Mira la captura y escribe abajo el bonificado (en tu hoja se suma al importe).</span></div>';h+='<div><div class="lb">Trayecto bonificado (€), si lo hay</div><input class="inp" data-fn="'+i+'" data-fk="bon" type="text" inputmode="decimal" placeholder="0,00" value="'+esc(x.bon!=null?String(x.bon).replace('.',','):'')+'" autocomplete="off"></div>';}
  h+='<div><div class="lb">Importe total del servicio (€)</div><input class="inp imp" data-fn="'+i+'" data-fk="imp" type="text" inputmode="decimal" placeholder="0,00" value="'+esc(String(x.imp).replace('.',','))+'" autocomplete="off"></div>';
  if(!x.directo&&x.cands&&x.cands.length&&(String(x.imp)===''||x.ocr!=='ok')&&!x.conf)h+='<div><div class="lb">¿Es uno de estos importes? Toca el correcto</div><div class="chips">'+x.cands.map(function(c){return '<button class="pick" data-act="fn-cand" data-i="'+i+'" data-v="'+c+'">'+String(c.toFixed(2)).replace('.',',')+' €</button>';}).join('')+'</div></div>';
  h+='<div><div class="lb">Cómo se cobró</div><div class="chips">'+pk('fn-set','metodo','app','App',x.metodo==='app')+pk('fn-set','metodo','efectivo','Efectivo / datáfono',x.metodo!=='app')+'</div></div>';
@@ -2936,7 +2941,7 @@ document.addEventListener('input',function(e){
  var t=e.target;
  if(!t.dataset)return;
  if(t.dataset.f){S.form[t.dataset.f]=t.value;if(S.ocr){var oo=S.ocr[t.dataset.f]||(S.ocr[t.dataset.f]={});oo.conf=true;oo.typed=true;oo.ok=true;}var l=$('live');if(l)l.innerHTML=liveHtml();}
- if(t.dataset.fn!==undefined&&S.fn&&S.fn[+t.dataset.fn]){var sv=S.fn[+t.dataset.fn];sv[t.dataset.fk]=t.value;if(t.dataset.fk==='imp')sv.typed=true;sv.conf=false;fnSync();var fs=$('fnsum');if(fs)fs.innerHTML=fnSumHtml();}
+ if(t.dataset.fn!==undefined&&S.fn&&S.fn[+t.dataset.fn]){var sv=S.fn[+t.dataset.fn];sv[t.dataset.fk]=t.value;if(t.dataset.fk==='imp')sv.typed=true;if(t.dataset.fk==='bon'&&sv.gross!=null&&sv.com!=null){var bv=fnNum(t.value);sv.imp=(Math.round((sv.gross-sv.com+bv)*100)/100).toFixed(2).replace('.',',');sv.typed=false;}sv.conf=false;fnSync();var fs=$('fnsum');if(fs)fs.innerHTML=fnSumHtml();}
  if(t.id==='nota')S.texto=t.value;
  if(t.dataset.ed&&S.edit)S.edit.f[t.dataset.ed]=t.value;
  if(t.id==='edMot'&&S.edit)S.edit.motivo=t.value;
