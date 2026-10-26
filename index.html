@@ -174,6 +174,11 @@ nav.tabs button[aria-current="true"]{color:var(--ink)}
 nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;left:22%;right:22%;height:4px;background:var(--taxi)}
 .badge{position:absolute;top:6px;left:calc(50% + 8px);background:var(--bad);color:#fff;border-radius:9px;min-width:18px;height:18px;font-size:11px;display:grid;place-items:center;padding:0 5px}
 
+.shnav{display:flex;align-items:center;justify-content:space-between;gap:8px}.shnav b{text-transform:capitalize}
+.shgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.shh{font-family:var(--f-mono);font-size:11px;text-align:center;color:var(--ink2)}
+.shd{position:relative;min-height:44px;border-radius:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600;font-size:16px;padding:0}.shd.emp{border:0;background:none}
+.shd:disabled{opacity:.3}.shd.hoy{border:2px solid var(--ink)}.shd.done{background:var(--ok-bg);color:var(--ok)}.shd.done i{position:absolute;right:3px;top:0;font-size:10px;font-style:normal}
+.shd.sel{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .lock{text-align:center;padding:40px 8px;display:flex;flex-direction:column;gap:12px;align-items:center}
 .lock svg{width:56px;height:56px}
 .thumbs{display:flex;gap:8px;flex-wrap:wrap}
@@ -380,7 +385,7 @@ nav.tabs button[aria-current="true"]::before{content:"";position:absolute;top:0;
 (function(){
 'use strict';
 var LIVE=!!window.TURNOS_URL;
-var APP_V='2.0';
+var APP_V='2.01';
 function p2(n){return ('0'+n).slice(-2);}
 function iso(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
 var TAXI_PHOTO=''; /* aquí va la foto del taxi (data:image/jpeg;base64,...) */
@@ -541,9 +546,15 @@ function drv(){return LIVE?(S.me||{id:0,name:'',pct:45,status:'ACTIVO'}):S.users
 function fn1(n){return String(n||'').trim().split(/\s+/)[0]||'';}
 function uById(id){return S.users.filter(function(u){return u.id===+id;})[0];}
 function uname(id){var u=uById(id||2);return (u&&u.name)||('Usuario '+id);}
+function lastDayOf(uid){var m='';(S.days||[]).forEach(function(d){if(d.driver===uid&&d.date>m)m=d.date;});return m;}
+function defShift(){var me=S.me?S.me.id:0,l=me?lastDayOf(me):'';if(l){var n=isoAdd(l,1);if(n<=TODAY)return n;}return autoShiftDate();}
 function shiftDate(){
  if(!LIVE)return TODAY;
- if(S.mine&&S.mineDate)return S.mineDate;
+ if(S.shiftSel&&/^\d{4}-\d{2}-\d{2}$/.test(S.shiftSel))return S.shiftSel;
+ return defShift();
+}
+function autoShiftDate(){
+ if(!LIVE)return TODAY;
  var d=new Date(),h=d.getHours(),a=S.form&&S.form.horaIni,b=S.form&&S.form.horaFin,same=false;
  var re=/^\d{1,2}:\d{2}$/;
  if(a&&b&&re.test(a)&&re.test(b)){var x=a.split(':'),y=b.split(':');same=(+y[0]*60+ +y[1])>(+x[0]*60+ +x[1]);}
@@ -562,7 +573,7 @@ function clearDraft(){try{localStorage.removeItem(DRAFTK);}catch(e){}idb('del','
 function draftHas(){var n=0;for(var k in S.files)n+=(S.files[k]||[]).length;return n>0||Object.keys(S.form||{}).length>1||(S.fn&&S.fn.length>0);}
 function saveDraft(){
  if(!LIVE||!S.me||S.editing||!(S.screen==='up'||S.screen==='confirm')||!draftHas())return;
- try{localStorage.setItem(DRAFTK,JSON.stringify({v:1,uid:S.me.id,t:Date.now(),mine:!!S.mine,mineDate:S.mineDate||null,second:!!S.second,upStep:S.upStep,form:S.form,slots:S.slots,caps:S.caps,coche:S.coche,motivos:S.motivos,texto:S.texto,slotInc:S.slotInc,ocr:S.ocr,fn:S.fn||[]}));}catch(e){}
+ try{localStorage.setItem(DRAFTK,JSON.stringify({v:1,uid:S.me.id,t:Date.now(),mine:!!S.mine,mineDate:S.mineDate||null,shiftSel:S.shiftSel||null,second:!!S.second,upStep:S.upStep,form:S.form,slots:S.slots,caps:S.caps,coche:S.coche,motivos:S.motivos,texto:S.texto,slotInc:S.slotInc,ocr:S.ocr,fn:S.fn||[]}));}catch(e){}
  var sig='',list=[];for(var k in S.files)(S.files[k]||[]).forEach(function(f,i){sig+=k+i+f.size+'|';list.push([k,f]);});
  if(sig!==S._phSig){S._phSig=sig;idb('put','fotos',{uid:S.me.id,list:list});}
 }
@@ -585,13 +596,13 @@ function draftRestore(){
  var d=S.draft;if(!d)return;var o=d.o;
  S.draftOffer=false;S.draft=null;
  resetForm();
- S.mine=!!o.mine;S.mineDate=o.mineDate||S.mineDate;S.second=!!o.second;S.view='driver';S.dtab='up';S.screen='up';
+ S.mine=!!o.mine;S.mineDate=o.mineDate||S.mineDate;S.shiftSel=o.shiftSel||null;S.second=!!o.second;S.view='driver';S.dtab='up';S.screen='up';
  S.form=o.form||{tarifasOk:false};S.slots=o.slots||S.slots;S.caps=o.caps||0;S.coche=o.coche||S.coche;S.motivos=o.motivos||[];S.texto=o.texto||'';S.slotInc=o.slotInc||{};S.ocr=o.ocr||{};S.fn=o.fn||[];S.upStep=o.upStep||1;
  d.ph.forEach(function(it){var k=it[0],f=it[1],u='';try{u=URL.createObjectURL(f);}catch(e){}if(!u)return;(S.files[k]=S.files[k]||[]).push(f);(S.thumbs[k]=S.thumbs[k]||[]).push(u);});
  for(var k in S.slots){if(S.slots[k]==='ok'&&!(S.thumbs[k]||[]).length&&!(k==='servicios'&&S.caps))S.slots[k]='none';}
  render();window.scrollTo(0,0);
 }
-function resetForm(){clearDraft();S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
+function resetForm(){clearDraft();S.taQ=null;S.shiftSel=null;S.shOpen=undefined;S.shMonth=null;S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
 function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
@@ -672,6 +683,7 @@ function masterExp(){
  return h;
 }
 function sentToday(){if(S.mine)return false;var sd=shiftDate(),me=LIVE?drv().id:2;return S.days.some(function(d){return d.date===sd&&d.driver===me;});}
+function sentAuto(){var sd=autoShiftDate(),me=LIVE?drv().id:2;return S.days.some(function(d){return d.date===sd&&d.driver===me;});}
 
 function receipt(res){
  var h='<div class="ticket">';
@@ -764,11 +776,11 @@ function recuerdosHtml(base){
   +'<span class="small muted">Comparo por día de la semana. Marco festivos nacionales y de Cataluña; los locales de El Prat no los conozco. Los datos salen de tu Excel.</span></div>';
 }
 function driverHome(){
- var u=drv(),sent=sentToday(),ms=monthStats(),mn=MONTHS[+TODAY.slice(5,7)-1];
+ var u=drv(),sent=sentAuto(),ms=monthStats(),mn=MONTHS[+TODAY.slice(5,7)-1];
  var km=0,hh=0,fac=0,parte=0;S.days.forEach(function(d){km+=num(d.f.kmTotales)||0;hh+=dayHours(d);fac+=num(d.f.total)||0;parte+=d.res.parte||0;});
  var h='<div class="hgrid"><div class="hbox hy"><span class="label" style="color:inherit;opacity:.75">Facturado en '+mn+'</span><span class="big">'+eur0(ms.f)+'</span><span class="small">'+ms.n+' turno'+(ms.n===1?'':'s')+'</span></div>'
  +'<div class="hbox hg"><span class="label" style="color:inherit;opacity:.85">Tu beneficio · '+u.pct+' %</span><span class="big">'+eur0(ms.t)+'</span><span class="small">lo que te llevas</span></div></div>';
- h+='<div class="card stack"><div class="row sp"><span class="label">Turno de hoy · '+dw(shiftDate())+' '+dl(shiftDate())+'</span>'+(sent?'<span class="chip ok">Enviado</span>':'<span class="chip mute">Sin enviar</span>')+'</div>'
+ h+='<div class="card stack"><div class="row sp"><span class="label">Turno de hoy · '+dw(autoShiftDate())+' '+dl(autoShiftDate())+'</span>'+(sent?'<span class="chip ok">Enviado</span>':'<span class="chip mute">Sin enviar</span>')+'</div>'
  +'<h2>'+(sent?'Turno enviado. Gracias.':'Sube las fotos del turno')+'</h2>'
  +'<p class="muted">'+(sent?'Iván lo revisará. Si algo no cuadra, te lo dirá.':(LIVE?'Son unas 5 fotos. Súbelas y escribe los números que ves en ellas.':'Son unas 5 fotos. La app lee los datos y tú solo confirmas.'))+'</p>'
  +(sent?'':'<button class="btn yel block" data-act="tab" data-t="up">'+I.cam+' Empezar</button>')+'</div>';
@@ -900,6 +912,25 @@ function steps(n){
  for(var i=1;i<=5;i++)h+='<button type="button" class="'+(i===n?'on':(i<=S.maxStep?'done':''))+'" data-act="goto-step" data-n="'+i+'" aria-label="Ir al paso '+i+': '+l[i-1]+'"></button>';
  return h+'</div><div class="stepcap">Paso '+n+' de 5 · '+l[n-1]+' · toca una barra para ir a ese paso</div>';
 }
+var TA_KEYS=['ta_serv','ta_saltos','ta_km','ta_kmOcup','ta_carr','ta_sup','ta_imp','ta_supB','ta_fecha','ta_lic'];
+var TA_L={ta_serv:'T. Nº servicios',ta_saltos:'T. Nº saltos',ta_km:'T. Km totales',ta_kmOcup:'T. Km ocupado',ta_carr:'T. carreras (€)',ta_sup:'T. suplemento (€)',ta_imp:'T. importe total (€)',ta_supB:'T. sup. borrado (€)',ta_fecha:'Fecha y hora del ticket',ta_lic:'Licencia'};
+function extraPhotoCard(k,title,desc){
+ var th=S.thumbs[k]||[],st=S.slots[k];
+ var h='<div class="card photo"><div class="top"><div class="grow"><b>'+title+'</b><div class="small muted">'+desc+'</div></div>'+(th.length?'<span class="chip ok">'+th.length+' foto'+(th.length>1?'s':'')+'</span>':'<span class="chip mute">Opcional</span>')+'</div>';
+ if(th.length)h+='<div class="thumbs">'+th.map(function(u,i){return '<div class="th"><img alt="Foto subida (toca para ampliar)" data-act="zoom" data-k="'+k+'" data-i="'+i+'" src="'+u+'"><button data-act="rm" data-k="'+k+'" data-i="'+i+'" aria-label="Quitar esta foto">'+I.no+'</button></div>';}).join('')+'</div>';
+ if(k==='totales'&&th.length){
+  {
+   var q=S.taQ||{};
+   if((S.ocrBusy||0)>0&&!S.taQ)h+='<div class="small muted">Leyendo el ticket… Mientras tanto puedes escribir los datos.</div>';
+   else h+=(q.n>=5?(q.cuadra?'<div class="small"><span class="chip ok">Cuadra: carreras + suplemento = importe total</span></div>':'<div class="small"><span class="chip warn">No cuadra carreras + suplemento = importe total: míralo en la foto</span></div>'):'<div class="small"><span class="chip warn">No he podido leer el ticket: escribe los datos o repite la foto</span></div>')+(q.ded?'<div class="small muted">'+TA_L[q.ded]+' calculado con los otros dos.</div>':'');
+   h+='<div class="stack" style="gap:6px">'+TA_KEYS.map(function(f){var v=S.form[f];return '<div class="row sp" style="align-items:center;gap:8px"><label class="small" for="f_'+f+'" style="flex:1">'+TA_L[f]+'</label><input id="f_'+f+'" class="inp" style="max-width:55%" data-f="'+f+'" type="text" inputmode="'+(f==='ta_fecha'?'text':'decimal')+'" value="'+esc(v==null?'':String(v).replace('.',','))+'" autocomplete="off"></div>';}).join('')+'</div>';
+  }
+ }
+ if(k==='odometro'&&th.length)h+='<div class="row sp" style="align-items:center;gap:8px"><label class="small" for="f_odometro" style="flex:1">Km del odómetro (opcional)</label><input id="f_odometro" class="inp" style="max-width:55%" data-f="odometro" type="text" inputmode="decimal" value="'+esc(S.form.odometro==null?'':String(S.form.odometro).replace('.',','))+'" autocomplete="off"></div>';
+ h+='<div class="acts"><label class="btn sm yel"><input type="file" accept="image/*" '+(k==='totales'?'':'')+'class="fi" data-slot="'+k+'">'+I.cam+' '+(th.length?'Cambiar / añadir foto':'Subir foto')+'</label></div></div>';
+ return h;
+}
+function totalesCards(){return extraPhotoCard('totales','Total acumulado del taxímetro','Foto del ticket «Totales acumulados» (por si el ticket del turno sale cortado). Lee todos los datos.')+extraPhotoCard('odometro','Foto del odómetro','Para guardar los km reales del coche.');}
 function slotCard(s){
  var st=S.slots[s.k],th=S.thumbs[s.k]||[],n=th.length;
  if(s.k==='servicios')n=Math.max(S.caps,th.length);
@@ -930,16 +961,34 @@ function carStep(){
  var c=S.coche,has=c.chips.length||c.texto.trim();
  return '<div class="card stack"><p class="muted">Opcional. Si notas un ruido, un golpe o un aviso en el cuadro, anótalo y le llega a Iván.</p><div class="chips">'+COCHE.map(function(m){return '<button class="pick" data-act="coche-chip" data-m="'+m+'" aria-pressed="'+(c.chips.indexOf(m)>-1)+'">'+m+'</button>';}).join('')+'</div><textarea id="cocheTxt" data-c="texto" placeholder="Si quieres, cuéntalo en una línea" aria-label="Incidencia del coche">'+esc(c.texto)+'</textarea></div><div class="row"><button class="btn ghost" data-act="step-back">Atrás</button><button class="btn pri grow" id="closeBtn" data-act="to-confirm">'+(has?'Añadir y cerrar turno':'Saltar y cerrar turno')+'</button></div>';
 }
+function shiftCalHtml(){
+ if(!LIVE||S.editing||!S.me)return '';
+ var sel=shiftDate(),ym=S.shMonth||sel.slice(0,7),open=(S.shOpen===undefined?(S.upStep<=(S.mine?2:1)):S.shOpen),me=S.me.id,done={};
+ (S.days||[]).forEach(function(d){if(d.driver===me)done[d.date]=1;});
+ var h='<div class="card stack shcal"><div class="row sp"><span class="label">Día del turno</span><button class="btn sm ghost" data-act="sh-toggle">'+(open?'Cerrar calendario':'Cambiar día')+'</button></div>'
+  +'<div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><b style="font-size:18px">'+dw(sel)+' '+dl(sel)+'/'+sel.slice(0,4)+'</b>'+(S.shiftSel?'<span class="chip ink">Elegido por ti</span>':'<span class="chip mute">Sugerido: el siguiente a tu último turno</span>')+(done[sel]?'<span class="chip warn">Ya enviado</span>':'')+'</div>';
+ if(open){
+  var y=+ym.slice(0,4),m=+ym.slice(5,7),first=new Date(Date.UTC(y,m-1,1,12)),off=(first.getUTCDay()+6)%7,nd=new Date(Date.UTC(y,m,0,12)).getUTCDate(),c='';
+  for(var i=0;i<off;i++)c+='<span class="shd emp"></span>';
+  for(var dd=1;dd<=nd;dd++){var is=ym+'-'+p2(dd),fut=is>TODAY;
+   c+='<button class="shd'+(is===sel?' sel':'')+(done[is]?' done':'')+(is===TODAY?' hoy':'')+'" data-act="sh-pick" data-v="'+is+'"'+(fut?' disabled':'')+' aria-label="'+dd+' de '+MONTHS[m-1]+(done[is]?', ya enviado':'')+'">'+dd+(done[is]?'<i>✓</i>':'')+'</button>';}
+  h+='<div class="shnav"><button class="btn sm ghost" data-act="sh-mes" data-v="-1" aria-label="Mes anterior">‹</button><b>'+MONTHS[m-1]+' '+y+'</b><button class="btn sm ghost" data-act="sh-mes" data-v="1" aria-label="Mes siguiente"'+(ym>=TODAY.slice(0,7)?' disabled':'')+'>›</button></div>'
+   +'<div class="shgrid"><span class="shh">L</span><span class="shh">M</span><span class="shh">X</span><span class="shh">J</span><span class="shh">V</span><span class="shh">S</span><span class="shh">D</span>'+c+'</div>'
+   +'<div class="small muted">Toca el día en que empezó el turno. ✓ = ya enviado. Si te retrasas, elige el día que toca.</div>';
+ }
+ return h+'</div>';
+}
 function driverUpload(){
- if(!S.editing&&sentToday()&&!S.second)return '<div class="lock"><h2>Ya enviaste hoy</h2><p class="muted">Si algo está mal, pídele permiso a Iván desde “Mis días”. Si has hecho un segundo turno el mismo día, pulsa el botón.</p>'+(LIVE?'<button class="btn sm ghost" data-act="second-start">Es un segundo turno de hoy</button>':'')+'</div>';
+ if(!S.editing&&sentToday()&&!S.second)return shiftCalHtml()+'<div class="lock"><h2>Ya enviaste este día</h2><p class="muted">Si algo está mal, pídele permiso a Iván desde “Mis días”. Si has hecho un segundo turno el mismo día, pulsa el botón. Si querías subir otro día, cámbialo en el calendario.</p>'+(LIVE?'<button class="btn sm ghost" data-act="second-start">Es un segundo turno de ese día</button>':'')+'</div>';
  var h='',n=S.upStep;
- if(S.mine)h+='<div class="banner ink"><b>Subiendo un turno tuyo</b><span class="small">Fecha en que empezó el turno</span><input class="inp" id="mineDate" type="date" value="'+esc(S.mineDate||TODAY)+'" max="'+TODAY+'"><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="mine-exit">Volver al panel</button></div>';
+ if(S.mine)h+='<div class="banner ink"><b>Subiendo un turno tuyo</b><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="mine-exit">Volver al panel</button></div>';
+ h+=shiftCalHtml();
  if(S.second&&!S.mine)h+='<div class="banner ink"><b>Segundo turno de hoy</b><span class="small">Iván recibirá un aviso de que hay dos turnos el mismo día.</span></div>';
  if(S.editing){var ed=dayById(S.editing);h+='<div class="banner ink"><b>Corrigiendo el día '+dl(ed.date)+'</b><span>Iván lo ha autorizado. Cambia lo que haga falta y reenvía.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="edit-cancel">Cancelar corrección</button></div>';}
  h+=steps(n)+'<div class="row sp"><h2>'+STEPT[n-1]+'</h2><button class="btn sm ghost" data-act="sound">'+(S.sound?'Sonido: sí':'Sonido: no')+'</button></div>';
  if(n===1)h+=fnStep()+(((S.fn||[]).length&&fnTotals().sum>0)?groupCard('FreeNow'):'');
- if(n===2)h+=slotCard(SL('taximetro'))+dateWarn();
- if(n===3)h+=slotCard(SL('tpv'))+tpvWarn()+((S.slots.tpv!=='none'||isFinite(num(S.form.tpv)))?groupCard('Datáfono (TPV)'):'');
+ if(n===2)h+=slotCard(SL('taximetro'))+dateWarn()+(S.mine?totalesCards():'');
+ if(n===3)h+=slotCard(SL('tpv'))+tpvWarn()+tpvTipHtml()+((S.slots.tpv!=='none'||isFinite(num(S.form.tpv)))?groupCard('Datáfono (TPV)'):'');
  if(n===4)return h+carStep();
  h+='<div class="hint">Si una foto sale mal o no se lee, quítala y sube otra. Si no hay forma, “Reportar incidencia” y sigues.</div>';
  h+='<div class="row">'+(n>1?'<button class="btn ghost" data-act="step-back">Atrás</button>':'')+'<button class="btn pri grow" data-act="step-next">Siguiente</button></div>';
@@ -979,6 +1028,9 @@ function fnParse(t){
  else if(tot!=null&&tot>0&&tot<2000&&!isBon(tot)){r.imp=tot;r.q='ok';r.curso=!/trayecto\s*completado/i.test(T);}
  if(prop!=null&&prop>0)r.prop=prop;
  if(com!=null)r.com=com;if(net!=null)r.net=net;
+ /* v2.01 (día referente 25/10): precio cerrado = lo que cobra el taxista tras la comisión (+ bonificado si lo hay); taxímetro = importe bruto SIN descontar comisión */
+ if(r.imp!=null&&!r.curso){r.gross=r.imp;if(bon.length)r.bon=bon[0];
+  if(cer&&com!=null&&r.imp>com){var nn=Math.round((r.imp-com+(r.bon||0))*100)/100;r.imp=nn;if(r.q!=='ok'&&cuadra(r.gross-com))r.q='ok';}}
  var cn={};all.forEach(function(v){if(v>0.5&&v<=1500&&!isBon(v)){var k=v.toFixed(2);cn[k]=(cn[k]||0)+1;}});
  r.cands=Object.keys(cn).filter(function(k){return !(com!=null&&Math.abs(+k-com)<0.005)&&!(net!=null&&Math.abs(+k-net)<0.005)&&!(prop!=null&&prop>0&&Math.abs(+k-prop)<0.005);}).sort(function(a,b){return cn[b]-cn[a]||(+b)-(+a);}).slice(0,4).map(Number);
  return r;
@@ -992,7 +1044,7 @@ function fnReadFile(file){
   function lineBox(d,re,w,h){var ls=(d.lines||[]).filter(function(l){return re.test(l.text||'');});if(!ls.length)return null;var l=ls[0],ws=(l.words||[]).filter(function(x){return !/\d/.test(x.text||'')&&x.bbox;}),u;
    if(ws.length){u={x0:1e9,y0:1e9,x1:0,y1:0};ws.forEach(function(x){u.x0=Math.min(u.x0,x.bbox.x0);u.y0=Math.min(u.y0,x.bbox.y0);u.x1=Math.max(u.x1,x.bbox.x1);u.y1=Math.max(u.y1,x.bbox.y1);});}else u=l.bbox;
    return u?fr(u,w,h):null;}
-  function fnLoc(r,d,w,h){r.ar=h0/w0;if(r.imp==null)return;var b=oFindNum(d.words,r.imp),loc={};if(b)loc.imp=fr(b,w,h);
+  function fnLoc(r,d,w,h){r.ar=h0/w0;if(r.imp==null)return;var b=oFindNum(d.words,r.imp)||(r.gross!=null?oFindNum(d.words,r.gross):null),loc={};if(b)loc.imp=fr(b,w,h);
    var m=r.pago==='app'?lineBox(d,/pago\s*v\S{0,3}\s*a\S{1,3}/i,w,h):lineBox(d,/efectivo|tarjeta|dat.fono/i,w,h);if(m)loc.met=m;
    if(r.cerrado){var f=lineBox(d,/precio\s*(?:cerrado|fijo)/i,w,h);if(f)loc.fijo=f;}
    if(loc.imp||loc.met||loc.fijo)r.loc=loc;}
@@ -1020,7 +1072,7 @@ function fnScan(start,files){
   ocrQ=ocrQ.then(function(){return gen===S.gen?fnReadFile(f):null;}).then(function(r){
    if(gen!==S.gen||!r)return;card.reading=false;
    card.cands=r.cands||[];
-   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
+   if(r.imp!=null&&String(card.imp)===''){card.imp=r.imp.toFixed(2).replace('.',',');card.read=r.imp;card.ocr=r.q||'revisar';card.box=(r.loc&&r.loc.imp)||null;card.boxM=(r.loc&&r.loc.met)||null;card.boxF=(r.loc&&r.loc.fijo)||null;card.pago=r.pago||null;card.gross=(r.gross!=null?r.gross:null);card.com=(r.com!=null?r.com:null);card.bon=(r.bon!=null?r.bon:null);card.ar=r.ar||1.5;if(r.curso)card.curso=true;}
    if(r.cerrado){card.cerrado=true;card.taxi=false;}else if(r.imp!=null){card.taxi=true;card.cerrado=false;card.auto=true;}
    if(r.directo)card.metodo='efectivo'; /* «Pago efectivo/tarjeta» = servicio cobrado en efectivo: suma como cualquier servicio (taxEfe si es de taxímetro), según el Excel */
    if(r.imp==null&&String(card.imp)==='')card.noleido=true;
@@ -1052,7 +1104,7 @@ function fnSumHtml(){
  return '<span class="chip ink">'+t.n+' servicio'+(t.n>1?'s':'')+'</span><span class="chip mute">App '+t.app+'</span><span class="chip '+(t.efe?'warn':'mute')+'">Efectivo/datáfono '+t.efe+'</span><span class="chip mute">Taxímetro '+t.taxi+'</span><span class="chip mute">Precio fijo '+t.cer+'</span><span class="chip ok">Total '+eur(t.sum)+'</span>'+(t.conf===t.n?'<span class="chip solid">✓ Todo comprobado</span>':'<span class="chip warn">Sin comprobar: '+(t.n-t.conf)+'</span>');
 }
 var FNLOGO='<span class="fnlogo" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 6l8 12 8-12" fill="none" stroke="#e3212b" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-function fnTag(x){var a=fnNum(x.imp);if(!(a>0))return '';return '<div class="mono" style="font-weight:700">'+eur(a)+' · '+(x.directo?'cobro directo':(x.metodo==='app'?'App':'Efectivo / datáfono'))+(x.directo?'':(x.cerrado?' (precio fijo)':' (taxímetro)'))+'</div>';}
+function fnTag(x){var a=fnNum(x.imp);if(!(a>0))return '';return '<div class="mono" style="font-weight:700">'+eur(a)+' · '+(x.directo?'cobro directo':(x.metodo==='app'?'App':'Efectivo / datáfono'))+(x.directo?'':(x.cerrado?' (precio fijo, sin comisión)':' (taxímetro, sin descontar comisión)'))+'</div>';}
 function fnPills(x){var a=fnNum(x.imp);if(!(a>0))return '';
  return '<div class="fnyel"><span class="fy">'+eur(a)+'</span><span class="fy">'+(x.metodo==='app'?'Pago vía app':'Cobrado en efectivo')+'</span>'+(x.cerrado?'<span class="fy">Precio fijo</span>':'')+'</div>';}
 function fnCard(x,i,u){
@@ -1063,14 +1115,14 @@ function fnCard(x,i,u){
  else if(x.directo)h+='<div class="small"><span class="chip warn">Cobro directo al conductor (pago efectivo/tarjeta): NO es ingreso de FreeNow, no se suma</span></div>';
  else if(!x.ocr&&String(x.imp)===''&&u)h+='<div class="banner bad"><b>Tengo dudas con esta captura</b><span>No he podido leer el importe con seguridad. Mira la captura y elige uno de los importes de abajo o escríbelo.</span></div>';
  else if(x.curso&&x.ocr)h+='<div class="small"><span class="chip warn">Servicio sin terminar en la captura: importe del viaje, sin comisión</span></div>';
- else if(x.ocr)h+='<div class="small"><span class="chip '+(x.ocr==='ok'?'ok':'warn')+'">'+(x.ocr==='ok'?'Leído y cuadra (importe − comisión = neto)':'Leído de la captura: compruébalo')+'</span></div>';
+ else if(x.ocr)h+='<div class="small"><span class="chip '+(x.ocr==='ok'?'ok':'warn')+'">'+(x.ocr==='ok'?'Leído y cuadra (precio fijo: importe − comisión'+(x.bon?' + bonificado':'')+')':'Leído de la captura: compruébalo')+'</span></div>';
  if(x.auto&&!x.directo&&!x.cerrado&&!x.conf)h+='<div class="small"><span class="chip warn">Sin «precio cerrado» en la captura: marcado como hecho con taxímetro</span></div>';
  if(u&&x.box&&fnNum(x.imp)>0)h+=cropHtml(u,x.box,x.ar||1.5);
  if(u&&fnNum(x.imp)>0)h+='<div class="small"><button class="btn sm ghost" data-act="fn-zoom" data-i="'+i+'">Ver la captura grande con los recuadros</button></div>';
  h+='<div><div class="lb">Importe total del servicio (€)</div><input class="inp imp" data-fn="'+i+'" data-fk="imp" type="text" inputmode="decimal" placeholder="0,00" value="'+esc(String(x.imp).replace('.',','))+'" autocomplete="off"></div>';
  if(!x.directo&&x.cands&&x.cands.length&&(String(x.imp)===''||x.ocr!=='ok')&&!x.conf)h+='<div><div class="lb">¿Es uno de estos importes? Toca el correcto</div><div class="chips">'+x.cands.map(function(c){return '<button class="pick" data-act="fn-cand" data-i="'+i+'" data-v="'+c+'">'+String(c.toFixed(2)).replace('.',',')+' €</button>';}).join('')+'</div></div>';
  h+='<div><div class="lb">Cómo se cobró</div><div class="chips">'+pk('fn-set','metodo','app','App',x.metodo==='app')+pk('fn-set','metodo','efectivo','Efectivo / datáfono',x.metodo!=='app')+'</div></div>';
- h+='<div><div class="lb">Tipo de servicio</div><div class="chips">'+pk('fn-tipo','tipo','taxi','Hecho con taxímetro (se descuenta)',!!x.taxi)+pk('fn-tipo','tipo','cerrado','Precio fijo',!!x.cerrado)+'</div></div>';
+ h+='<div><div class="lb">Tipo de servicio</div><div class="chips">'+pk('fn-tipo','tipo','taxi','Hecho con taxímetro (importe bruto)',!!x.taxi)+pk('fn-tipo','tipo','cerrado','Precio fijo',!!x.cerrado)+'</div></div>';
  h+=fnPills(x);
  h+=(x.conf?'<span class="chip ok">✓ Comprobado</span> <button class="btn sm ghost" data-act="fn-unok" data-i="'+i+'">Deshacer</button>':'<button class="okbtn" data-act="fn-ok" data-i="'+i+'">✓ Está bien</button>')+'</div>';
  return h;
@@ -1083,11 +1135,23 @@ function dateWarn(){
  if(df!==0&&S.ticketDateOk===false)return '<div class="banner warn"><b>He leído la fecha '+dFmt(S.ticketDate)+' en el ticket</b><span>No estoy seguro de haberla leído bien y este turno es del '+dFmt(sd)+'. Mira la foto: si la fecha del ticket es la de tu turno, sigue sin problema.</span></div>';
  if(df===0)return '<div class="banner ok"><span>✓ La fecha de inicio del ticket ('+dFmt(S.ticketDate)+') coincide con este turno.</span></div>';
  var txt=df<0?'El ticket empezó el '+dFmt(S.ticketDate)+' y este turno se guardará como '+dFmt(sd)+'. ¿Foto de otro día?':'El ticket empieza el '+dFmt(S.ticketDate)+', después de la fecha de este turno ('+dFmt(sd)+'). ¿Foto equivocada?';
- return '<div class="banner bad"><b>Revisa la fecha</b><span>'+txt+'</span>'+(S.mine?'<button class="btn sm yel" style="align-self:flex-start" data-act="use-ticket-date">Usar la fecha del ticket</button>':'<span class="small">Si es correcta, sigue: Iván lo verá marcado.</span>')+'</div>';
+ return '<div class="banner bad"><b>Revisa la fecha</b><span>'+txt+'</span>'+'<button class="btn sm yel" style="align-self:flex-start" data-act="use-ticket-date">Usar la fecha del ticket</button>'+(S.mine?'':'<span class="small">Si la fecha del turno ya es correcta, sigue: Iván lo verá marcado.</span>')+'</div>';
 }
 function tpvDateBad(){
  if(!LIVE||S.mine||S.slots.tpv!=='ok')return false;
  if(!S.tpvDate)return true;var df=dayDiff(S.tpvDate,S.ticketDate||shiftDate());return df!==0&&df!==1;
+}
+function tpvTipInfo(){
+ var imp=num(S.form.impresora),er=num(S.form.err)||0,tp=num(S.form.tpv);
+ if(!LIVE||!isFinite(imp)||!isFinite(tp)||S.slots.tpv!=='ok')return null;
+ var calle=r2(imp-(isFinite(er)?er:0)),df=r2(tp-calle);
+ return {calle:calle,df:df};
+}
+function tpvTipHtml(){
+ var t=tpvTipInfo();if(!t)return '';
+ if(Math.abs(t.df)<0.02)return '<div class="banner ok"><span>✓ El TPV ('+eur(num(S.form.tpv))+') coincide con los servicios del ticket sin FreeNow ('+eur(t.calle)+').</span></div>';
+ if(t.df>0)return '<div class="banner ok"><span>El TPV es '+eur(t.df)+' mayor que los servicios del ticket sin FreeNow ('+eur(t.calle)+'): se anota como propina.</span></div>';
+ return '<div class="banner bad"><b>El TPV es menor que los servicios del ticket</b><span>Los servicios del ticket sin FreeNow suman '+eur(t.calle)+' y el TPV '+eur(num(S.form.tpv))+' (faltan '+eur(-t.df)+'). Revisa que estén todos los cobros con tarjeta o que esa parte sea efectivo.</span></div>';
 }
 function tpvWarn(){
  if(LIVE&&S.slots.tpv==='ok'&&!S.tpvDate)return '<div class="banner warn"><b>No he podido leer la fecha del TPV</b><span>Mira en la foto que sea del día del turno o del siguiente. Si no lo es, pulsa «Reportar incidencia»; Iván lo verá marcado.</span></div>';
@@ -1329,7 +1393,7 @@ function masterPanel(){
  h+='<h2>Verdes por aceptar</h2>';
  if(!rev.length)h+='<div class="card"><p class="muted">No hay días verdes esperando tu check.</p></div>';
  rev.forEach(function(d){h+=dayRow(d);});
- h+=(LIVE?'<button class="btn sm ghost" style="align-self:flex-start" data-act="reload">Actualizar</button>':'')+'<h3>Registro de actividad</h3><div class="card stack">'+S.log.slice(0,8).map(function(l){return '<div class="row small"><span class="mono muted" style="min-width:118px">'+(l.n?'Nº '+l.n+' · ':'')+esc(l.t)+'</span><span>'+esc(l.x)+'</span></div>';}).join('')+'</div>';
+ h+=(LIVE?'<button class="btn sm ghost" style="align-self:flex-start" data-act="reload">Actualizar</button>':'')+'<h3>Registro de actividad</h3><div class="card stack">'+S.log.slice(0,S.logShow||25).map(function(l){return '<div class="row small"><span class="mono muted" style="min-width:118px">'+(l.n?'Nº '+l.n+' · ':'')+esc(l.t)+'</span><span>'+esc(l.x)+'</span></div>';}).join('')+'</div>'+logMoreHtml();
  if(LIVE)h+='<button class="btn sm ghost" style="align-self:flex-start" data-act="logout">Cerrar la sesión de Iván</button>';
  return h;
 }
@@ -1742,7 +1806,8 @@ function renderMain(){
  if(S.pickLost)h='<div class="banner ink"><b>El móvil cerró la app mientras hacías la foto</b><span>He recuperado lo que llevabas. Haz otra vez esa última foto.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="pick-x">Entendido</button></div>'+h;
  if(S.exitMsg)h='<div class="banner ink exitb"><b>'+esc(S.exitMsg)+'</b></div>'+h;
 var inFl=S.view==='driver'&&S.dtab==='up'&&(S.screen==='up'||S.screen==='result'||S.screen==='confirm');
- if(S.leaveAsk||S.exitAsk){var back=inFl&&(S.screen!=='up'||S.upStep>1);h+='<div class="exitmod" role="alertdialog" aria-modal="true"><div class="exitbox"><b>¿Seguro que quieres salir?</b><span>No se envía nada. Lo que llevas se queda guardado en este móvil.</span><div class="stack"><button class="btn pri block" data-act="'+(S.leaveAsk?'leave-no':'exit-no')+'">Seguir aquí</button>'+(back?'<button class="btn ghost block" data-act="exit-back">Retroceder un paso</button>':'')+'<button class="btn bad block" data-act="'+(S.leaveAsk?'leave-yes':'exit-yes')+'">Sí, salir</button></div></div></div>';}
+ if(S.logoutAsk){h+='<div class="exitmod" role="alertdialog" aria-modal="true"><div class="exitbox"><b>¿Seguro que quieres salir?</b><span>Se cerrará tu sesión y volverás a la pantalla de usuario y contraseña. Lo que llevas sin enviar se queda guardado en este móvil.</span><div class="stack"><button class="btn pri block" data-act="logout-no">Seguir aquí</button><button class="btn bad block" data-act="logout-yes">Sí, salir</button></div></div></div>';}
+ else if(S.leaveAsk||S.exitAsk){var back=inFl&&(S.screen!=='up'||S.upStep>1);h+='<div class="exitmod" role="alertdialog" aria-modal="true"><div class="exitbox"><b>¿Seguro que quieres salir?</b><span>No se envía nada. Lo que llevas se queda guardado en este móvil.</span><div class="stack"><button class="btn pri block" data-act="'+(S.leaveAsk?'leave-no':'exit-no')+'">Seguir aquí</button>'+(back?'<button class="btn ghost block" data-act="exit-back">Retroceder un paso</button>':'')+'<button class="btn bad block" data-act="'+(S.leaveAsk?'leave-yes':'exit-yes')+'">Sí, salir</button></div></div></div>';}
  if(h.indexOf('class="think')<0){thinkSave();THINK_T0=0;}
  $('app').innerHTML=h+regFoot()+'<div style="text-align:center;opacity:.45;font-size:11px;margin:14px 0 4px">Versión '+APP_V+'</div>';
 }
@@ -2066,7 +2131,56 @@ function ocrUnrot(loc,deg,w0,h0){ /* caja en la foto enderezada → caja en la f
   out[k]={x0:Math.max(0,Math.min.apply(null,xs)-0.01),x1:Math.min(1,Math.max.apply(null,xs)+0.01),y0:Math.max(0,Math.min.apply(null,ys)-0.003),y1:Math.min(1,Math.max.apply(null,ys)+0.003)};}
  return out;
 }
+/* v2.01: ticket «Totales acumulados» del taxímetro (solo máster) */
+function parseTotales(txt){
+ var T=String(txt||'').replace(/\r/g,'');
+ var pi=T.search(/parciales/i);if(pi>0)T=T.slice(0,pi); /* los TOTALES PARCIALES (P.) no cuentan */
+ T=T.replace(/(\d)\s*([.,])\s*(\d)/g,'$1$2$3');
+ var lines=T.split('\n'),f={},q={};
+ function nums(l){var m=l.match(/\d[\d.,]*/g)||[];return m.map(function(x){x=x.replace(/[.,]+$/,'');var d=x.lastIndexOf('.'),c=x.lastIndexOf(',');var p=Math.max(d,c);if(p>=0&&x.length-p-1<=2){x=x.slice(0,p).replace(/[.,]/g,'')+'.'+x.slice(p+1);}else x=x.replace(/[.,]/g,'');return x;});}
+ function put(k,l){var n=nums(l);if(!n.length)return;f[k]=n[n.length-1];}
+ lines.forEach(function(l0){
+  var l=l0.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(/^\s*p\s*[.:]/.test(l))return;
+  if(/servicios/.test(l)&&f.ta_serv==null)put('ta_serv',l);
+  else if(/saltos/.test(l)&&f.ta_saltos==null)put('ta_saltos',l);
+  else if(/km\s*tot/.test(l)&&f.ta_km==null)put('ta_km',l);
+  else if(/km\s*oc/.test(l)&&f.ta_kmOcup==null)put('ta_kmOcup',l);
+  else if(/carreras/.test(l)&&f.ta_carr==null)put('ta_carr',l);
+  else if(/sup\w*\.?\s*bor|borra/.test(l)&&f.ta_supB==null)put('ta_supB',l);
+  else if(/suplemento/.test(l)&&f.ta_sup==null)put('ta_sup',l);
+  else if(/imp\w*\.?\s*to/.test(l)&&f.ta_imp==null)put('ta_imp',l);
+ });
+ var cnt=Object.keys(f).length;
+ if(cnt<5){ /* respaldo: por orden de aparición tras «ACUMULADOS» */
+  var ai=T.search(/acumulad/i),seg=ai>=0?T.slice(ai):T,ord=['ta_serv','ta_saltos','ta_km','ta_kmOcup','ta_carr','ta_sup','ta_imp','ta_supB'],vals=[];
+  seg.split('\n').forEach(function(l){if(/^\s*p\s*[.:]/i.test(l))return;if(/(fecha|licen|visualiz)/i.test(l))return;var n=nums(l);if(n.length&&/[a-z]/i.test(l))vals.push(n[n.length-1]);});
+  if(vals.length>=7){var g={};ord.forEach(function(k,i){if(vals[i]!=null)g[k]=vals[i];});f=g;}
+ }
+ var d=T.match(/(\d{2})\s*[\/.-]\s*(\d{2})\s*[\/.-]\s*(20\d{2})\D{0,6}(\d{1,2})\s*:\s*(\d{2})/);if(d)f.ta_fecha=d[1]+'/'+d[2]+'/'+d[3]+' '+('0'+d[4]).slice(-2)+':'+d[5];
+ var li=T.match(/licen\w*\s*[:.]?\s*(\d{3,5})/i);if(li)f.ta_lic=li[1];
+ var c=parseFloat(f.ta_carr),s=parseFloat(f.ta_sup),im=parseFloat(f.ta_imp),ded=null;
+ if(isFinite(c)&&isFinite(s)&&isFinite(im)){q.cuadra=Math.abs(c+s-im)<0.021;}
+ else if(isFinite(c)&&isFinite(s)){f.ta_imp=(Math.round((c+s)*100)/100).toFixed(2);ded='ta_imp';}
+ else if(isFinite(c)&&isFinite(im)){f.ta_sup=(Math.round((im-c)*100)/100).toFixed(2);ded='ta_sup';}
+ else if(isFinite(s)&&isFinite(im)){f.ta_carr=(Math.round((im-s)*100)/100).toFixed(2);ded='ta_carr';}
+ if(ded)q.cuadra=true;
+ q.ded=ded;q.n=Object.keys(f).length;
+ return {f:f,q:q};
+}
+function ocrReadTotales(file){
+ return Promise.all([ocrWorker(),ocrBitmap(file)]).then(function(a){
+  var wk=a[0],bm=a[1],w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,rot=0;
+  try{rot=ocrSkew(bm,w0,h0);}catch(e){rot=0;}if(rot)bm=ocrRotate(bm,w0,h0,rot);
+  var sc=Math.min(2.2,2200/Math.max(w0,h0)),aw=Math.round(w0*sc),ah=Math.round(h0*sc);
+  var pa=LECTOR.prep(ocrGray(bm,0,0,w0,h0,aw,ah),aw,ah,25);
+  function score(r){return (r.q.cuadra?100:0)+r.q.n;}
+  return ocrRec(wk,ocrCanvas(pa.norm,aw,ah),6).then(function(d1){var r1=parseTotales(d1.text);if(r1.q.cuadra&&r1.q.n>=8&&!r1.q.ded)return r1;
+   return ocrRec(wk,ocrCanvas(pa.th,aw,ah),6).then(function(d2){var r2_=parseTotales(d2.text);if(score(r2_)>score(r1))return r2_;return r1;});});
+ });
+}
 function ocrReadFile(kind,file){
+ if(kind==='totales')return ocrReadTotales(file);
  var wk,bm,w0,h0,rot=0;
  return Promise.all([ocrWorker(),ocrBitmap(file)]).then(function(a){
   wk=a[0];bm=a[1];w0=bm.width||bm.naturalWidth;h0=bm.height||bm.naturalHeight;
@@ -2099,7 +2213,7 @@ function ocrReadFile(kind,file){
   });
  });
 }
-window.__ocrReadFile=ocrReadFile;window.__LECTOR=LECTOR;if(window.TURNOS_TEST)window.__t={ccShow:function(h){ccShow(h);},S:function(){return S;},act:function(a,d){act(a,d||{});},render:render,offer:function(){S._draftChecked=false;offerDraft();}};
+window.__ocrReadFile=ocrReadFile;window.__LECTOR=LECTOR;if(window.TURNOS_TEST)window.__t={verify:verify,fnTotals:fnTotals,fnSync:fnSync,ccShow:function(h){ccShow(h);},S:function(){return S;},act:function(a,d){act(a,d||{});},render:render,offer:function(){S._draftChecked=false;offerDraft();}};
 function ocrEmpty(v){return v==null||v===''||(typeof v==='number'&&!isFinite(v));}
 function tpvDate(t){var m=String(t||'').match(/(\d{1,2})[\/.\-](\d{1,2})[\/.\-](20\d{2}|\d{2})(?!\d)/);if(!m)return null;var y=+m[3];if(y<100)y+=2000;var d=+m[1],mo=+m[2];if(mo<1||mo>12||d<1||d>31)return null;return y+'-'+('0'+mo).slice(-2)+'-'+('0'+d).slice(-2);}
 window.__tpvDate=tpvDate;
@@ -2134,6 +2248,13 @@ function ocrRefresh(){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a
 function ocrScan(k,files){
  if(!LIVE||window.TURNOS_NO_OCR||!window.Promise||!files.length)return;
  var kind=(k==='tpv')?'tpv':'ticket',gen=S.gen;
+ if(k==='totales'){
+  files.slice(0,2).forEach(function(f){
+   S.ocrBusy=(S.ocrBusy||0)+1;
+   ocrQ=ocrQ.then(function(){return ocrReadFile('totales',f);}).then(function(r){if(gen!==S.gen||!r||!r.f)return;S.ocr=S.ocr||{};for(var a in r.f){var o=S.ocr[a];if(o&&o.typed)continue;S.form[a]=r.f[a];}S.taQ=r.q;},function(){if(gen===S.gen)S.taQ={n:0,err:true};}).then(function(){S.ocrBusy=Math.max(0,(S.ocrBusy||1)-1);ocrRefresh();});
+  });
+  render(true);return;
+ }
  files.slice(0,3).forEach(function(f){
   S.ocrBusy=(S.ocrBusy||0)+1;
   var meta={slot:k,idx:Math.max(0,(S.files[k]||[]).indexOf(f))};
@@ -2175,7 +2296,9 @@ function chkRender(){
   d.innerHTML='<div class="chk-top"><b>'+esc(it.title||'Foto')+(c.items.length>1?' · '+(c.i+1)+' de '+c.items.length:'')+'</b><button data-act="chk-close">Cerrar</button></div>'
   +'<div class="chk-view" id="chkView"><div class="chk-stage" id="chkStage"><img id="chkImg" alt="Foto subida" src="'+it.url+'"></div>'
   +'<div class="chk-ctl"><button data-act="chk-zin" aria-label="Acercar">+</button><button data-act="chk-zout" aria-label="Alejar">−</button><button data-act="chk-fit" aria-label="Ver toda la foto">Toda</button></div></div>'
-  +'<div class="chk-ask"><div class="q">Pellizca o toca dos veces para acercar.</div><div class="row">'+(c.items.length>1?'<button data-act="chk-skip">Siguiente foto</button>':'')+'<button class="yes" data-act="chk-close">Cerrar</button></div></div>';
+  +'<div class="chk-ask"><div class="q">'+(it.fk&&INL_L[it.fk]?'Escribe aquí <b>'+esc(INL_L[it.fk])+'</b> mientras miras la foto (pellizca o toca dos veces para acercar).':'Pellizca o toca dos veces para acercar.')+'</div>'
+  +(it.fk&&INL_L[it.fk]?'<input id="chkFree" type="text" inputmode="'+(it.fk==='horaIni'||it.fk==='horaFin'?'numeric':'decimal')+'" autocomplete="off" placeholder="'+(it.fk==='horaIni'||it.fk==='horaFin'?'hh:mm':'0,00')+'" value="'+esc(S.form[it.fk]==null?'':String(S.form[it.fk]).replace('.',','))+'">':'')
+  +'<div class="row">'+(c.items.length>1?'<button data-act="chk-skip">Siguiente foto</button>':'')+(it.fk&&INL_L[it.fk]?'<button class="yes" data-act="chk-free-save">Guardar y cerrar</button>':'<button class="yes" data-act="chk-close">Cerrar</button>')+'</div></div>';
   var img0=$('chkImg'),view0=$('chkView');
   var lay0=function(){var vw=view0.clientWidth,vh=view0.clientHeight,ih=vw*(img0.naturalHeight/img0.naturalWidth||1.5);c.vw=vw;c.vh=vh;c.ih=ih;if(c.url!==it.url){c.url=it.url;c.z=Math.min(1,vh/ih);c.tx=(vw-vw*c.z)/2;c.ty=(vh-ih*c.z)/2;}chkApply();};
   if(img0.complete&&img0.naturalWidth)lay0();else img0.onload=lay0;
@@ -2188,7 +2311,8 @@ function chkRender(){
  +(c.edit?'<input id="chkInp" type="text" inputmode="'+(it.k==='horaIni'||it.k==='horaFin'?'numeric':'decimal')+'" autocomplete="off" value="'+esc(fx?String(fx.imp).replace('.',','):(S.form[it.k]==null?'':String(S.form[it.k]).replace('.',',')))+'">'
         +'<div class="row"><button data-act="chk-cancel-edit">Atrás</button><button class="yes" data-act="chk-save">Guardar y seguir</button></div>'
        :'<div class="val">'+esc(fx?(num(fx.imp)>0?eur(num(fx.imp)):'—'):chkVal(it.k))+'</div>'+(fx?'<div class="fnyel"><span class="fy">'+(fx.metodo==='app'?'Pago vía app':'Cobrado en efectivo')+'</span>'+(fx.cerrado?'<span class="fy">Precio fijo</span>':'')+'</div><div class="row"><button data-act="chkfn-m" data-v="'+(fx.metodo==='app'?'efectivo':'app')+'">Cambiar a '+(fx.metodo==='app'?'efectivo':'app')+'</button><button data-act="chkfn-f">'+(fx.cerrado?'No es precio fijo':'Es precio fijo')+'</button></div>':'')+(b?'':'<div class="hint2">No he podido señalarlo en la foto: muévela y búscalo.</div>')
-        +'<div class="row"><button data-act="chk-no">No, lo corrijo</button><button class="yes" data-act="chk-yes">Sí, es este</button></div>')
+        +'<div class="hint2">Si no es, escribe el correcto aquí mismo:</div><input id="chkInp" type="text" inputmode="'+(it.k==='horaIni'||it.k==='horaFin'?'numeric':'decimal')+'" autocomplete="off" placeholder="'+(it.k==='horaIni'||it.k==='horaFin'?'hh:mm':'0,00')+'" value="">'
+        +'<div class="row"><button class="yes" data-act="chk-yes">Sí, es este</button><button data-act="chk-save">Guardar el que escribo</button></div>')
  +'</div>';
  var img=$('chkImg'),view=$('chkView');
  function lay(){
@@ -2263,7 +2387,7 @@ function inlineHtml(slot){
   var cr='';if(o&&o.cands&&o.cands.length&&!conf&&(!has||!o.ok))cr='<div class="small"><b>'+(k==='impresora'?'¿Cuál es el Importe TOTAL del ticket?':'¿Es uno de estos?')+'</b></div><div class="chips">'+o.cands.slice(0,4).map(function(x){return '<button class="pick" data-act="pick-cand" data-k="'+k+'" data-v="'+x+'">'+String(x).replace('.',',')+'</button>';}).join('')+'</div>';
   h+='<div class="irow'+(conf?' done':'')+'">'+crop+'<div class="iv"><label for="f_'+k+'">'+INL_L[k]+'</label><input id="f_'+k+'" data-f="'+k+'" type="text" inputmode="'+tipo+'" value="'+esc(val)+'" autocomplete="off" placeholder="'+(k==='horaIni'||k==='horaFin'?'hh:mm':'0,00')+'">'+cr+'<div class="acts2">'
    +(conf?'<span class="chip ok">✓ '+(o.typed?'Escrito por ti':'Confirmado')+'</span> <button class="btn sm ghost" data-act="unok-one" data-k="'+k+'">Deshacer</button>':(has?'<button class="okbtn" data-act="ok-one" data-k="'+k+'">✓ Es correcto</button>':'<span class="small muted">Escríbelo y se da por bueno</span>'))
-   +(u&&o&&o.box&&!conf?' <button class="btn sm ghost" data-act="chk-one" data-k="'+k+'">Ver foto entera</button>':((!u||!(o&&o.box))&&(S.thumbs[slot]||[]).length?' <button class="btn sm ghost" data-act="zoom-inp" data-k="'+slot+'" data-t="'+esc(INL_L[k])+'">Ver foto entera</button>':''))+'</div></div></div>';
+   +(u&&o&&o.box&&!conf?' <button class="btn sm ghost" data-act="chk-one" data-k="'+k+'">Ver foto entera</button>':((!u||!(o&&o.box))&&(S.thumbs[slot]||[]).length?' <button class="btn sm ghost" data-act="zoom-inp" data-k="'+slot+'" data-fk="'+k+'" data-t="'+esc(INL_L[k])+'">Ver foto entera</button>':''))+'</div></div></div>';
   if(k==='kmTotales'&&(!conf||(S.km2&&(S.km2.libre||S.km2.ocup))))h+='<div style="margin:2px 0 8px">'+kmHelper()+'</div>';
  });
  var head='<div class="small"><b>'+(done===n?'✓ Comprobado':'Comprueba lo que ha leído la app')+'</b>'+(done===n?'':' · pulsa ✓ si el número es el de la foto, o corrígelo')+'</div>';
@@ -2304,6 +2428,7 @@ function act(a,d){
   case 'chk-all':chkOpen(null);return;
   case 'chk-one':chkOpen(null,d.k);return;
   case 'chk-close':chkExit();return;
+  case 'chk-free-save':{if(S.chk){var itf=S.chk.items[S.chk.i],ivf=$('chkFree'),vf=ivf?ivf.value.trim():'';if(itf&&itf.fk&&vf!==''){if(itf.fk==='horaIni'||itf.fk==='horaFin'){var ntf=normTime(vf);vf=ntf||vf;}S.form[itf.fk]=vf;S.ocr=S.ocr||{};var of=S.ocr[itf.fk]||(S.ocr[itf.fk]={});of.conf=true;of.typed=true;of.ok=true;}chkExit();}return;}
   case 'cam':{if(tipsOff())camOpen(d.k);else{S.camTip={k:d.k};render(true);}return;}
   case 'cam-go':{var ck=S.camTip&&S.camTip.k;S.camTip=null;render(true);if(ck)camOpen(ck);return;}
   case 'cam-never':{var ck2=S.camTip&&S.camTip.k;tipsSet();S.camTip=null;render(true);if(ck2)camOpen(ck2);return;}
@@ -2317,7 +2442,7 @@ function act(a,d){
   case 'chk-yes':if(S.chk){var iy=S.chk.items[S.chk.i];if(iy.fn!=null&&S.fn[iy.fn]){S.fn[iy.fn].conf=true;fnSync();}else chkMark(iy.k);chkNext();}return;
   case 'chk-skip':if(S.chk){S.chk.i=(S.chk.i+1)%S.chk.items.length;S.chk.laid=false;chkRender();}return;
   case 'zoom':{var zl=(S.thumbs[d.k]||[]).map(function(u,ix){return {free:true,url:u,title:(SL(d.k)||{}).t||'Foto'};});viewOpen(zl,+d.i||0);return;}
-  case 'zoom-inp':{var zk=d.k,zu=(S.thumbs[zk]||[]);if(zu.length)viewOpen(zu.map(function(u){return {free:true,url:u,title:d.t||'Foto'};}),0);return;}
+  case 'zoom-inp':{var zk=d.k,zu=(S.thumbs[zk]||[]);if(zu.length)viewOpen(zu.map(function(u){return {free:true,url:u,title:d.t||'Foto',fk:d.fk||''};}),0);return;}
   case 'fn-zoom':{var fl2=[];(S.fn||[]).forEach(function(x,ix){var u2=(S.thumbs.freenow||[])[ix];if(u2)fl2.push({fn:ix,k:'fnimp',url:u2,box:x.box||null});});var st2=0;fl2.forEach(function(q,qi){if(q.fn===+d.i)st2=qi;});viewOpen(fl2,st2);return;}
   case 'chk-no':if(S.chk){S.chk.edit=true;chkRender();var ii=$('chkInp');if(ii){ii.focus();ii.select();}}return;
   case 'chk-cancel-edit':if(S.chk){S.chk.edit=false;chkRender();}return;
@@ -2341,12 +2466,15 @@ function act(a,d){
    S.slots.servicios='ok';S.caps=d.m==='ok'?2:1;S.form.total=471.3;S.form.efectivo=d.m==='ok'?182.36:150;
    S.dtab='up';S.screen='result';render();return;
   case 'send':send();return;
-  case 'use-ticket-date':if(S.ticketDate){S.mineDate=S.ticketDate;}render(true);return;
+  case 'use-ticket-date':if(S.ticketDate){S.shiftSel=S.ticketDate;S.mineDate=S.ticketDate;saveDraftSoon();}render(true);return;
+  case 'sh-toggle':{var op=(S.shOpen===undefined?(S.upStep<=(S.mine?2:1)):S.shOpen);S.shOpen=!op;render(true);return true;}
+  case 'sh-mes':{var cur=S.shMonth||shiftDate().slice(0,7);var nm=ymAddC(cur,+d.v);if(nm<=TODAY.slice(0,7)){S.shMonth=nm;render(true);}return true;}
+  case 'sh-pick':if(d.v&&d.v<=TODAY){S.shiftSel=d.v;S.mineDate=d.v;S.shOpen=false;S.shMonth=null;saveDraftSoon();render(true);}return true;
   case 'dfilter':S.dfilter=(d.v==='all')?'all':+d.v;render(true);return;
   case 'fn-set':{var x=(S.fn||[])[+d.i];if(x){var v=d.v;if(d.fk==='propSi')v=(v==='1');x[d.fk]=v;if(d.fk==='metodo'||d.fk==='propSi')x.conf=false;if(d.fk==='propSi'&&!v)x.prop='';fnSync();render(true);}return true;}
   case 'fn-tog':{var x2=(S.fn||[])[+d.i];if(x2){x2[d.fk]=!x2[d.fk];x2.conf=false;fnSync();render(true);}return true;}
   case 'fn-cand':{var xc=(S.fn||[])[+d.i];if(xc){xc.imp=String(d.v).replace('.',',');xc.ocr='revisar';xc.picked=true;xc.conf=false;fnSync();render(true);}return true;}
-  case 'fn-tipo':{var xt=(S.fn||[])[+d.i];if(xt){xt.taxi=(d.v==='taxi');xt.cerrado=(d.v==='cerrado');xt.auto=false;xt.conf=false;fnSync();render(true);}return true;}
+  case 'fn-tipo':{var xt=(S.fn||[])[+d.i];if(xt){xt.taxi=(d.v==='taxi');xt.cerrado=(d.v==='cerrado');xt.auto=false;xt.conf=false;if(xt.gross!=null&&!xt.typed){var nv=xt.cerrado&&xt.com!=null?xt.gross-xt.com+(xt.bon||0):xt.gross;xt.imp=(Math.round(nv*100)/100).toFixed(2).replace('.',',');}fnSync();render(true);}return true;}
   case 'chkfn-m':{var cf=S.chk&&S.chk.items[S.chk.i],xm=cf&&cf.fn!=null?S.fn[cf.fn]:null;if(xm){xm.metodo=d.v;xm.conf=false;fnSync();chkRender();}return true;}
   case 'chkfn-f':{var cf2=S.chk&&S.chk.items[S.chk.i],xf=cf2&&cf2.fn!=null?S.fn[cf2.fn]:null;if(xf){if(xf.cerrado){xf.cerrado=false;xf.taxi=true;}else{xf.cerrado=true;xf.taxi=false;}xf.auto=false;xf.conf=false;fnSync();chkRender();}return true;}
   case 'fn-ok':{var x3=(S.fn||[])[+d.i];if(x3){x3.conf=true;render(true);}return true;}
@@ -2359,7 +2487,7 @@ function act(a,d){
   case 'sound':S.sound=!S.sound;if(S.sound)beep(1);render(true);return;
   case 'rm':
    if(d.k==='gasto'){S.exThumbs.splice(+d.i,1);S.exFiles.splice(+d.i,1);}
-   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(S.files[d.k])S.files[d.k].splice(+d.i,1);if(d.k==='freenow'&&S.fn){S.fn.splice(+d.i,1);fnSync();}if(d.k==='tpv'){var np={};Object.keys(S.tpvParts||{}).forEach(function(q){q=+q;if(q<+d.i)np[q]=S.tpvParts[q];else if(q>+d.i)np[q-1]=S.tpvParts[q];});S.tpvParts=np;var kq=Object.keys(np);if(kq.length>1){var sm2=0;kq.forEach(function(q){sm2+=np[q];});S.form.tpv=Math.round(sm2*100)/100;}}if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
+   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(S.files[d.k])S.files[d.k].splice(+d.i,1);if(d.k==='freenow'&&S.fn){S.fn.splice(+d.i,1);fnSync();}if(d.k==='tpv'){var np={};Object.keys(S.tpvParts||{}).forEach(function(q){q=+q;if(q<+d.i)np[q]=S.tpvParts[q];else if(q>+d.i)np[q-1]=S.tpvParts[q];});S.tpvParts=np;var kq=Object.keys(np);if(kq.length>1){var sm2=0;kq.forEach(function(q){sm2+=np[q];});S.form.tpv=Math.round(sm2*100)/100;}}if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(d.k==='totales'&&!arr.length){TA_KEYS.forEach(function(q){delete S.form[q];if(S.ocr)delete S.ocr[q];});S.taQ=null;}if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
    render(true);return;
   case 'finc-open':S.finc=S.finc||{};S.finc[d.k]=S.finc[d.k]||{};S.finc[d.k].open=true;render(true);return;
   case 'finc-cancel':S.finc=S.finc||{};S.finc[d.k]={open:false,text:(S.finc[d.k]||{}).text};render(true);return;
@@ -2531,6 +2659,10 @@ function logDet(a,d){
  if(/^\d+$/.test(d))return '';
  return d;
 }
+function logMoreHtml(){
+ var shown=Math.min(S.logShow||25,S.log.length),more=(S.log.length>shown)||(S.logTotal&&S.logTotal>S.log.length)||(!S.logTotal&&S.log.length>=60&&!S.logEnd);
+ return '<div class="small muted" style="margin-top:6px">Mostrando '+shown+(S.logTotal?' de '+S.logTotal:'')+'</div>'+(more?'<button class="btn ghost block" data-act="log-more"'+(S.logBusy?' disabled':'')+'>'+(S.logBusy?'Cargando…':'Ver más antiguos')+'</button>':'<div class="small muted">Ya está todo el registro.</div>');
+}
 function mapLog(l){
  var t=String(l.t||''),m=t.match(/^\d{4}-(\d{2})-(\d{2}) (\d{2}:\d{2})/),dt=logDet(l.accion,l.detalle);
  return {n:l.n,t:m?m[2]+'/'+m[1]+' '+m[3]:t,x:(l.uid?fn1(uname(l.uid))+' ':'')+(LOGT[l.accion]||l.accion)+(dt?' · '+dt:'')};
@@ -2663,6 +2795,7 @@ function sendLive(){
   if(S.finc)Object.keys(S.finc).forEach(function(k){var q=S.finc[k];if(q&&q.text)inc.push({slot:'Incidencia · '+lblK(k),text:q.text});});
  }
  if(!S.regId)S.regId=regNew();
+ if(!S.editing&&!S.shiftSel)S.shiftSel=shiftDate();
  var req={reg:S.regId,version:APP_V,audit:aud,form:f,caps:S.caps,pend:pend,incid:inc,coche:coche,motivos:S.motivos.slice(),texto:S.texto,date:shiftDate(),second:!!S.second,mine:!!S.mine};
  if(S.editing){var ed=dayById(S.editing);if(!ed){S.sendErr='No se encuentra el día a corregir.';render(true);return;}req.editKey=ed.key;req.date=ed.date;}
  S.busy=true;S.sendErr='';render(true);
@@ -2698,9 +2831,13 @@ function liveAct(a,d){
    });
    return true;}
   case 'salir':
-   if(S.role==='master'){call('logout',{}).then(function(){clearTok();ccClose(true);liveReset();S._ccAuto=false;S.regMode='';render();});}
-   else{S.exitAsk=true;render(true);window.scrollTo(0,0);}
+   S.logoutAsk=true;render(true);window.scrollTo(0,0);
    return true;
+  case 'logout-no':S.logoutAsk=false;render(true);return true;
+  case 'logout-yes':{S.logoutAsk=false;var fin=function(){clearTok();ccClose(true);liveReset();S._ccAuto=false;S.regMode='';S.mine=false;S.exitAsk=false;S.leaveAsk=false;S.exitMsg='';S.logShow=0;S.logTotal=0;S.logEnd=false;render();window.scrollTo(0,0);};
+   var pr;try{pr=call('logout',{});}catch(e){pr=null;}
+   if(pr&&pr.then)pr.then(fin,fin);else fin();
+   return true;}
   case 'pass-set':{var pe=$('pw_'+id),pw0=pe?pe.value:'';S.passMsg=S.passMsg||{};
    if(String(pw0).length<4){S.passMsg[id]='Mínimo 4 caracteres.';render(true);return true;}
    call('setUserPass',{id:id,clave:pw0}).then(function(j){S.passMsg[id]=j.ok?('Contraseña puesta. Entra con el usuario «'+fn1(j.nombre)+'» y esa contraseña.'):(j.msg||errMsg(j));render(true);});
@@ -2709,8 +2846,8 @@ function liveAct(a,d){
   case 'ocr-skip':S.ocrBusy=0;S.gen=(S.gen||0)+1;S.ocrErr=true;render(true);return true;
   case 'draft-restore':draftRestore();return true;
   case 'draft-drop':S.draftOffer=false;clearDraft();render(true);return true;
-  case 'mine-start':S.mine=true;S.view='driver';S.dtab='up';S.screen='up';S.upStep=1;S.mine=false;S.mineDate=shiftDate();resetForm();S.mine=true;S.upStep=2;render();window.scrollTo(0,0);return true;
-  case 'mine-again':resetForm();S.screen='up';S.dtab='up';S.upStep=2;S.mineDate=S.mineDate||TODAY;render();window.scrollTo(0,0);return true;
+  case 'mine-start':S.mine=true;S.view='driver';S.dtab='up';S.screen='up';S.upStep=1;S.mine=false;S.mineDate=null;resetForm();S.mine=true;S.upStep=2;render();window.scrollTo(0,0);return true;
+  case 'mine-again':resetForm();S.screen='up';S.dtab='up';S.upStep=2;S.mineDate=null;render();window.scrollTo(0,0);return true;
   case 'mine-exit':S.mine=false;S.view='master';S.mtab='panel';S.screen='home';S.dtab='home';resetForm();render();window.scrollTo(0,0);return true;
   case 'second-start':S.second=true;render(true);return true;
   case 'second-no':S.dupAsk=false;render(true);return true;
@@ -2742,8 +2879,13 @@ function liveAct(a,d){
     return refresh().then(function(){window.scrollTo(0,0);});
    });
    return true;}
+  case 'log-more':{S.logShow=(S.logShow||25)+50;
+   if(S.log.length>=S.logShow-0||S.logEnd){render(true);return true;}
+   S.logBusy=true;render(true);
+   call('listLog',{n:S.logShow+100}).then(function(r){S.logBusy=false;if(r&&r.ok){S.log=(r.log||[]).map(mapLog);S.logTotal=r.total||S.log.length;if(S.log.length>=S.logTotal)S.logEnd=true;}render(true);},function(){S.logBusy=false;render(true);});
+   return true;}
   case 'logout':
-   call('logout',{}).then(function(){clearTok();liveReset();render();});
+   S.logoutAsk=true;render(true);window.scrollTo(0,0);
    return true;
   case 'accept':{dd=dayById(id);if(!dd)return true;var am2=$('accMot'),mv=am2?am2.value.trim():'';
    if(dd.estado!=='VERDE'&&!mv){S.accErr='Escribe en una línea por qué aceptas este día.';render(true);return true;}
@@ -2808,7 +2950,6 @@ document.addEventListener('change',function(e){
  var t=e.target;
  if(t&&t.classList&&t.classList.contains('fi')){try{localStorage.removeItem('turnos_pick');}catch(x){}}
  if(t&&t.dataset&&t.dataset.fn!==undefined&&S.screen==='up'){render(true);return;}
- if(t&&t.id==='mineDate'&&/^\d{4}-\d{2}-\d{2}$/.test(t.value||'')){S.mineDate=t.value;return;}
  if(t.dataset&&t.dataset.f&&S.screen==='up'&&inlKeys('tpv').concat(inlKeys('taximetro')).indexOf(t.dataset.f)>=0){S.form[t.dataset.f]=t.value;}
  if(t.dataset&&t.dataset.f&&(t.dataset.f==='horaIni'||t.dataset.f==='horaFin')){var nt=normTime(t.value);if(nt){t.value=nt;S.form[t.dataset.f]=nt;var lv=$('live');if(lv)lv.innerHTML=liveHtml();}}
  if(t.dataset&&t.dataset.f&&S.screen==='up'&&inlKeys('tpv').concat(inlKeys('taximetro')).indexOf(t.dataset.f)>=0){render(true);return;}
@@ -2829,7 +2970,7 @@ document.addEventListener('change',function(e){
    if(k==='freenow'&&!newF.length)newF.start=(S.fn||[]).length;
    cur.push(u);fl.push(f);newF.push(f);added++;if(k==='servicios')S.caps++;if(k==='freenow'){S.fn=S.fn||[];S.fn.push(fnNew());}
   });
-  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);if(k==='taximetro'||k==='tpv')ocrScan(k,newF);if(k==='freenow')fnScan(newF.start,newF);blurCheck(k,newF);}
+  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);if(k==='taximetro'||k==='tpv'||k==='totales')ocrScan(k,newF);if(k==='freenow')fnScan(newF.start,newF);blurCheck(k,newF);}
   if(added)beep(1);
   try{t.value='';}catch(x){}
   render(true);
