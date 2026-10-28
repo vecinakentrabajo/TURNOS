@@ -563,7 +563,7 @@ button.c{cursor:pointer}
 <main class="col pad" id="app"></main>
 <nav class="tabs"><div class="col pad" id="tabs"></div></nav>
 
-<script>var APP_V='2.12';</script>
+<script>var APP_V='2.13';</script>
 <script>window.TURNOS_URL="https://script.google.com/macros/s/AKfycbxNpC5SUYZPvurlMHYPso5MHvhusatlqRWJq2wvp53cgRstDIGKOkBST5wPdSqSiCm3/exec";</script>
 <script>
 (function(){
@@ -2260,21 +2260,28 @@ function colaFlush(man){
  if(!LIVE||S.colaBusy)return;
  if(!getTok()){if(S.colaMan){S.colaErr='Hay que entrar con tu usuario para poder enviarlo.';S.colaMan=false;render(true);}return;}
  S.colaBusy=true;S.colaErr='';if(S.colaMan)render(true);
- function fin(){S.colaBusy=false;S.colaMan=false;}
+ try{clearTimeout(S.colaTimer);}catch(e){}
+ function fin(){S.colaBusy=false;S.colaMan=false;S.bg=null;}
+ function retryLater(){try{clearTimeout(S.colaTimer);S.colaTimer=setTimeout(function(){colaFlush();},20000);}catch(e){}}
  function next(){
   return idb('get','cola').then(function(a){
-   if(!a||!a.length){S.colaN=0;S.colaList=[];fin();return refresh();}
-   var e0=a[0],pj=e0.job?uploadPhotos(e0.job.key,e0.job.photos,null).then(function(r){return r.ok?{ok:true,rest:[]}:{ok:false,error:'SIN_RED',rest:r.rest};}):sendShift(e0.req,null);
-   return pj.then(function(j){
-    if(j.ok&&j.rest&&j.rest.length){ /* el turno ya está; faltan fotos: se queda como trabajo de fotos */
-     a[0]={t:e0.t,job:{key:e0.job?e0.job.key:j.key,date:e0.job?e0.job.date:(e0.req||{}).date,reg:e0.job?e0.job.reg:(e0.req||{}).reg,photos:j.rest}};
-     S.colaErr=S.colaMan?'Sigue sin haber cobertura para las fotos. Se subirán solas en cuanto vuelva (deja la app abierta).':'';
-     return idb('put','cola',a).then(function(){fin();return colaCount().then(function(){render(true);});});}
-    if(j.error==='SIN_RED'&&e0.job&&j.rest){a[0].job.photos=j.rest;}
-    if(j.ok||j.error==='DUPLICADO'){a.shift();S.colaErr='';return idb('put','cola',a).then(function(){S.flash=e0.job?'Listo: las fotos pendientes ya están subidas.':'Listo: el turno guardado sin señal ya está enviado a Iván.';return colaCount().then(next);});}
-    var man=S.colaMan;
-    if(j.error==='SIN_RED'&&e0.job&&j.rest){idb('put','cola',a);}
-    if(j.error==='SIN_RED')S.colaErr=man?'Sigue sin haber cobertura. Se enviará solo en cuanto vuelva (deja la app abierta).':'';
+   if(!a||!a.length){S.colaN=0;S.colaList=[];S.colaFotos=0;fin();render(true);return refresh();}
+   var e0=a[0],man=S.colaMan;
+   if(e0.job){ /* fotos de un turno ya enviado: se suben una a una, guardando lo que falta tras cada foto */
+    var jb=e0.job,n0=jb.n||jb.photos.length;S.bg={k:Math.max(0,n0-jb.photos.length),n:n0};render(true);
+    return uploadPhotos(jb.key,jb.photos,null,{n:n0}).then(function(r){
+     if(r.ok){S.colaErr='';S.flash='Listo: las fotos del turno ya están subidas.';return colaCount().then(next);}
+     S.colaErr=man?'Sigue sin haber cobertura para las fotos. Se subirán solas en cuanto vuelva (deja la app abierta).':'';
+     fin();retryLater();return colaCount().then(function(){render(true);});
+    });
+   }
+   return sendShift(e0.req,'q').then(function(j){
+    if(j.ok&&j.pendingPhotos){ /* turno guardado en el servidor: sus fotos pasan a ser trabajo de fotos */
+     var jobE={t:e0.t,job:{key:j.key,date:e0.req.date,reg:e0.req.reg,photos:j.pendingPhotos,n:j.pendingPhotos.length}};
+     return idb('get','cola').then(function(b){b=(b||[]).map(function(x){return x.t===e0.t?jobE:x;});return idb('put','cola',b);}).then(function(){S.flash='Listo: el turno guardado sin señal ya está enviado a Iván. Ahora se suben las fotos.';return colaCount().then(next);});
+    }
+    if(j.ok||j.error==='DUPLICADO'){S.colaErr='';return colaDrop(e0.t).then(function(){S.flash='Listo: el turno guardado sin señal ya está enviado a Iván.';return colaCount().then(next);});}
+    if(j.error==='SIN_RED'){S.colaErr=man?'Sigue sin haber cobertura. Se enviará solo en cuanto vuelva (deja la app abierta).':'';retryLater();}
     else S.colaErr='No se pudo enviar: '+errMsg(j);
     fin();return colaCount().then(function(){render(true);});
    });
@@ -2282,7 +2289,7 @@ function colaFlush(man){
  }
  next();
 }
-try{window.addEventListener('online',colaFlush);window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;});}catch(e){}
+try{window.addEventListener('beforeunload',function(e){if(S.bg){e.preventDefault();e.returnValue='';}});window.addEventListener('online',colaFlush);window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;});}catch(e){}
 function renderMain(){
  var h='';
  if(LIVE&&(S.loading||S.netFail||!S.role)){
@@ -2318,7 +2325,7 @@ function renderMain(){
  }
 
  if(LIVE&&S.role&&!S.openDay&&((S.view==='driver'&&S.dtab==='home')||(S.view==='master'&&S.mtab==='cc'))&&instNeeded())h=instCard()+h;
- if(LIVE&&S.colaN>0)h=(S.colaBusy&&S.colaMan?thinkHtml('Un segundo, estoy enviando el turno guardado…'):'')+colaBanner()+h;
+ if(LIVE&&S.colaN>0)h=(S.colaBusy&&S.colaMan&&!S.bg?thinkHtml('Un segundo, estoy enviando el turno guardado…'):'')+(S.bg?'<div class="banner warn" id="bgbar">'+bgInner()+'</div>':colaBanner())+h;
  if(S.flash)h='<div class="banner ink"><b>'+esc(S.flash)+'</b><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="flash-x">Cerrar</button></div>'+h;
  if(S.draftOffer&&!draftHas())h=draftBanner()+h;
  if(S.camTip)h=camTipHtml()+h;
@@ -3277,7 +3284,8 @@ function call(action,data){
  try{p=fetch(window.TURNOS_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body),signal:ac?ac.signal:undefined}).then(function(r){return r.json();});}
  catch(e){p=Promise.reject(e);}
  p=p.then(function(x){clearTimeout(tm);return x;},function(e){clearTimeout(tm);throw e;});
- return p.then(function(j){return (j&&typeof j==='object')?j:{ok:false,error:'ERROR_SERVIDOR'};},function(){return {ok:false,error:'SIN_RED'};})
+ var tF=Date.now();
+ return p.then(function(j){return (j&&typeof j==='object')?j:{ok:false,error:'ERROR_SERVIDOR'};},function(e){return {ok:false,error:'SIN_RED',net:'FETCH '+action+' '+(Date.now()-tF)+'ms '+String(e&&e.name||'')+' '+String(e&&e.message||'').slice(0,40)+' online '+(navigator.onLine?'si':'no')};})
   .then(function(j){if(!j.ok)authCheck(j);return j;});
 }
 function dayId(d){return (+d.uid)*100000+Math.round(Date.parse(d.fecha+'T12:00:00Z')/864e5)%100000+(/#2$/.test(d.key||'')?40000:0);}
@@ -3480,7 +3488,7 @@ function sendLive(){
   req.audit=(req.audit||[]).concat([{k:'_tiempos',ocr:S.tm.ocr||[],prep:S.tm.prep,fotos:photos.length,kb:Math.round(JSON.stringify(photos).length/1024)}]);
   S.upP={fase:'data',pct:0,n:photos.length};render(true);S.askedOnce=false;S.netPings=0;
   var nPh=photos.length;
-  return sendShift(req,{n:nPh,
+  return sendShift(req,{n:nPh,bg:true,
    onp0:function(a,b,fin){S.upP={fase:fin?'srv':'up',pct:b?a/b:0,n:nPh};if(fin)S.tm.up=Date.now()-t1;render(true);},
    onData:function(a,b){S.upP={fase:'data',pct:b?a/b:0,n:nPh};render(true);},
    prog:function(k,n,cur){S.upP={fase:'photo',k:k,n:n,cur:cur||0};render(true);}
@@ -3492,6 +3500,7 @@ function sendLive(){
   });
  }).then(function(j){
   slowLive=false;S.slowSend=null;S.upP=null;if(j&&j.ok)vib([30,60,30]);
+  if(j&&j.ok&&j.bgq){S.flash='Turno enviado a Iván. Las fotos se están subiendo solas: puedes seguir usando la app, pero no la cierres hasta que termine.';setTimeout(function(){colaFlush();},400);}
   if(!j.ok){
    if(j.error==='SIN_RED'){return colaAdd(req).then(function(){S.busy=false;S.editing=null;resetForm();S.regId=null;S.regLast=null;S.screen='up';S.dtab='home';S.flash='Hecho: tu turno queda guardado en este móvil y se envía solo en cuanto haya cobertura. No has perdido nada. Deja la app abierta.';render(true);});}
    if(j.error==='DUPLICADO'&&!S.second&&!S.editing){return refresh().then(function(){
@@ -4150,12 +4159,12 @@ function netPing(j){ /* v2.12: apunta en tu hoja de registro el motivo exacto de
  try{if(!j||!j.net)return;S.netPings=(S.netPings||0)+1;if(S.netPings>4)return;regPing('ERROR',String(j.net).slice(0,190));}catch(e){}
 }
 function patientCall(action,data,onp,slowMs){
- var t0=Date.now(),T0=t0,asked=!!S.askedOnce;slowLive=true;
+ var t0=Date.now(),T0=t0,asked=!!S.askedOnce,useF=false;slowLive=true;
  function go(){
-  return callX(action,data,onp).then(function(j){
+  return (useF?call(action,data):callX(action,data,onp)).then(function(j){
    if(!slowLive)return j;
    if(!j||j.ok||j.error!=='SIN_RED'){S.slowSend=null;return j;}
-   netPing(j);
+   netPing(j);useF=!useF; /* v2.13: si un método de envío falla, el siguiente intento usa el otro */
    if(S.upP)S.upP.retry=true;
    var el=Date.now()-t0;
    if(asked){ /* ya se preguntó una vez en este envío: sigo solo; a los 3 minutos lo guardo en el móvil */
@@ -4182,31 +4191,42 @@ function srvSplit(){
   return false;
  });
 }
-function uploadPhotos(key,photos,ui){
- var rest=photos.slice(),n0=ui&&ui.n?ui.n:photos.length,bad=0,tries=0;
+function bgCall(action,data){ /* v2.13: envío en segundo plano, sin pantallas: si un método falla prueba el otro */
+ return callX(action,data).then(function(j){if(j&&!j.ok&&j.error==='SIN_RED'){netPing(j);return call(action,data).then(function(j2){if(j2&&!j2.ok&&j2.error==='SIN_RED')netPing(j2);return j2;});}return j;});
+}
+function bgInner(){var b=S.bg;if(!b)return '';var p=Math.round(100*b.k/Math.max(1,b.n));return '<b>Subiendo fotos: '+b.k+' de '+b.n+'</b><span>El turno ya está enviado. Puedes seguir trabajando; no cierres la app.</span><div style="height:8px;border-radius:4px;background:rgba(0,0,0,.12);overflow:hidden"><div style="height:100%;width:'+p+'%;background:var(--ok,#2a9d4a)"></div></div>';}
+function bgPaint(){try{var e=document.getElementById('bgbar');if(e)e.innerHTML=bgInner();}catch(x){}}
+function colaSetJob(key,rest){return idb('get','cola').then(function(a){a=a||[];var i=-1;for(var q=0;q<a.length;q++)if(a[q].job&&a[q].job.key===key){i=q;break;}if(i<0)return null;if(!rest.length)a.splice(i,1);else a[i].job.photos=rest;return idb('put','cola',a);});}
+function colaDrop(t){return idb('get','cola').then(function(a){a=(a||[]).filter(function(x){return x.t!==t;});return idb('put','cola',a);});}
+function uploadPhotos(key,photos,ui,bg){
+ var rest=photos.slice(),n0=ui&&ui.n?ui.n:((bg&&bg.n)||photos.length),bad=0,tries=0;
  function next(){
   if(!rest.length)return Promise.resolve({ok:true,rest:[],bad:bad});
   var p=rest[0],k=n0-rest.length,onp=function(a,b){if(ui&&ui.prog&&b)ui.prog(k,n0,Math.min(1,a/b));};
   if(ui&&ui.prog)ui.prog(k,n0,0);
-  var pr=ui?patientCall('addPhoto',{key:key,photo:p},onp,SLOW_MS+10000):callX('addPhoto',{key:key,photo:p});
+  if(bg){S.bg={k:k,n:n0};bgPaint();}
+  var pr=ui?patientCall('addPhoto',{key:key,photo:p},onp,SLOW_MS+10000):bgCall('addPhoto',{key:key,photo:p});
   return pr.then(function(j){
-   if(j&&j.ok){tries=0;rest.shift();return next();}
+   if(j&&j.ok){tries=0;rest.shift();if(bg)return colaSetJob(key,rest).then(next);return next();}
    if(j&&(j.error==='OCUPADO'||j.error==='ERROR_SERVIDOR')&&tries++<3)return new Promise(function(rs){setTimeout(rs,3000);}).then(next);
-   if(j&&j.error&&j.error!=='SIN_RED'&&j.error!=='OCUPADO'&&j.error!=='ERROR_SERVIDOR'&&!j.authFail){bad++;rest.shift();tries=0;return next();}
+   if(j&&j.error&&j.error!=='SIN_RED'&&j.error!=='OCUPADO'&&j.error!=='ERROR_SERVIDOR'&&!j.authFail){bad++;rest.shift();tries=0;if(bg)return colaSetJob(key,rest).then(next);return next();}
    return {ok:false,rest:rest,net:true,bad:bad};
   });
  }
  return next();
 }
 function sendShift(req,ui){
- var photos=req.photos||[],n=photos.length;
+ var photos=req.photos||[],n=photos.length,real=ui&&ui!=='q';
  function go(split){
-  if(!split||!n)return ui?sendPatient(req,ui.onp0):call('submitShift',req);
+  if(!split||!n)return real?sendPatient(req,ui.onp0):call('submitShift',req);
   var cnt={};photos.forEach(function(p){if(!p.k){cnt[p.slot]=(cnt[p.slot]||0)+1;p.k=cnt[p.slot];}});
   var r1={};for(var q in req)r1[q]=req[q];r1.photos=[];r1.nPhotos=n;
-  var p1=ui?patientCall('submitShift',r1,ui.onData,SLOW_MS):callX('submitShift',r1);
+  var p1=real?patientCall('submitShift',r1,ui.onData,SLOW_MS):bgCall('submitShift',r1);
   return p1.then(function(j){
    if(!j||!j.ok)return j;
+   /* v2.13: el turno ya está guardado en el servidor; las fotos se suben DESPUÉS, en segundo plano, desde la cola del móvil */
+   if(ui==='q'){j.pendingPhotos=photos;return j;}
+   if(real&&ui.bg){return colaAddJob({key:j.key,date:req.date,reg:req.reg,photos:photos,n:n}).then(function(){j.rest=[];j.bgq=true;return j;});}
    return uploadPhotos(j.key,photos,ui).then(function(r){j.rest=r.rest||[];j.bad=r.bad||0;return j;});
   });
  }
