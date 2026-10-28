@@ -152,6 +152,7 @@ p{margin:0}
 textarea{width:100%;min-height:72px;border:2px solid var(--line);border-radius:4px;background:#fff!important;color:#14171A!important;-webkit-text-fill-color:#14171A;padding:8px 10px;resize:vertical}
 textarea::placeholder{color:#6b7280!important;-webkit-text-fill-color:#6b7280}
 .fntab{width:100%;border-collapse:collapse;font-size:13px}.fntab th,.fntab td{border:1px solid var(--line);padding:5px 6px;text-align:right}.fntab th{background:var(--surface);font-weight:700}.fntab td:first-child,.fntab th:first-child{text-align:left}
+.ctbl{width:100%;border-collapse:collapse;font-size:13px}.ctbl th,.ctbl td{padding:3px 4px;text-align:right;border-bottom:1px solid var(--line)}.ctbl th:first-child,.ctbl td:first-child{text-align:left}.ctbl input{width:100%;min-width:0;padding:4px;font:inherit;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink)}.carit{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px}.carit.venc{border-color:var(--bad,#b00020);background:rgba(176,0,32,.07)}.carit.prox{border-color:#e0a800;background:rgba(224,168,0,.1)}.carit.ok{border-color:var(--ok,#1b7f3b)}
 .xlg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.xlg>div{border:1px solid var(--line);border-radius:4px;padding:6px 8px;display:flex;flex-direction:column}
 textarea:focus,input[type=text]:focus{outline:none;border-color:var(--ink)}
 .inp{width:100%;min-height:44px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 10px}
@@ -562,7 +563,7 @@ button.c{cursor:pointer}
 <main class="col pad" id="app"></main>
 <nav class="tabs"><div class="col pad" id="tabs"></div></nav>
 
-<script>var APP_V='2.08';</script>
+<script>var APP_V='2.09';</script>
 <script>window.TURNOS_URL="https://script.google.com/macros/s/AKfycbxNpC5SUYZPvurlMHYPso5MHvhusatlqRWJq2wvp53cgRstDIGKOkBST5wPdSqSiCm3/exec";</script>
 <script>
 (function(){
@@ -784,7 +785,7 @@ function draftRestore(){
  for(var k in S.slots){if(S.slots[k]==='ok'&&!(S.thumbs[k]||[]).length&&!(k==='servicios'&&S.caps))S.slots[k]='none';}
  render();window.scrollTo(0,0);
 }
-function resetForm(){clearDraft();S.taQ=null;S.ticketCond=null;S.ticketKind=null;S.totKind=null;S.dateAck=null;S.dateAsk=null;S.shiftSel=null;S.shiftFromTicket=false;S.tpvPicked=false;S.upP=null;S.tm={ocr:[]};S.shOpen=undefined;S.shMonth=null;S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
+function resetForm(){clearDraft();S.taQ=null;S.ticketCond=null;S.ticketKind=null;S.carr=null;S.tkx=null;S.totKind=null;S.dateAck=null;S.dateAsk=null;S.shiftSel=null;S.shiftFromTicket=false;S.tpvPicked=false;S.upP=null;S.tm={ocr:[]};S.shOpen=undefined;S.shMonth=null;S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
 function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
@@ -1643,7 +1644,7 @@ function masterPanel(){
  var mineBtn=LIVE?'<button class="btn yel block" data-act="mine-start">'+I.cam+' Subir un turno mío</button>':'';
  var pend=S.days.filter(function(d){return !d.accepted&&d.estado!=='VERDE';});
  var rev=S.days.filter(function(d){return !d.accepted&&d.estado==='VERDE';});
- var h=srvBanner()+mineBtn+'<div class="stats"><div><b>'+pend.length+'</b><span class="small muted">A aclarar</span></div><div><b>'+rev.length+'</b><span class="small muted">Por aceptar</span></div><div><b>'+S.problems.filter(function(p){return p.open;}).length+'</b><span class="small muted">Problemas</span></div></div>';
+ var h=srvBanner()+mineBtn+'<div class="stats"><div><b>'+pend.length+'</b><span class="small muted">A aclarar</span></div><div><b>'+rev.length+'</b><span class="small muted">Por aceptar</span></div><div><b>'+S.problems.filter(function(p){return p.open;}).length+'</b><span class="small muted">Problemas</span></div></div>'+lecCard()+odoCard()+carAlertCard();
  var ex=S.expenses.filter(function(x){return x.estado==='pendiente';});
  if(ex.length){h+='<h2>Gastos por confirmar</h2>';ex.forEach(function(e){h+='<div class="stack">'+exMail(e)+exActions(e)+'</div>';});}
  var rq=S.requests.filter(function(r){return r.estado==='pendiente';});
@@ -1683,10 +1684,177 @@ var FAC_TIPOS=['Avería','Mantenimiento','Gasoil','Seguro','Gestoría','Otro'];
 function gestionCard(){
  return '<div class="card stack"><h3 style="margin:0">Fotos y copias de seguridad</h3><p class="small muted">Compartir las fotos te deja abrirlas desde vecinaken@gmail.com (solo ver). La copia guarda el diario entero en Drive; además se hace sola una vez al día (se guardan las últimas 14).</p>'+(S.gMsg?'<div class="hint">'+esc(S.gMsg)+'</div>':'')+'<div class="row" style="flex-wrap:wrap"><button class="btn sm yel" data-act="fotos-share">Compartir fotos conmigo</button><button class="btn sm ghost" data-act="bk-now">Copia de seguridad ahora</button></div></div>'+pinCard();
 }
+
+/* ===== v2.09 · Coche, odómetro y lecturas extra por confirmar (solo máster; el lado de Mortada no cambia) ===== */
+var ODO_DIAS=7;
+var CAR_SEED={ref:null,itv:'',items:[
+ {id:'aceite',n:'Aceite motor',km:115000,aviso:2000,cada:null,ult:'Desconocido (anterior a Midas)',nota:'Según el historial estaba vencido',fecha:'',tipo:'km'},
+ {id:'dct',n:'Aceite caja DCT450',km:null,aviso:2000,cada:null,ult:'Nunca',nota:'Sin cambio registrado',fecha:'',tipo:'km'},
+ {id:'rev120',n:'Revisión 120.000 km',km:120000,aviso:2000,cada:null,ult:'95.597 km · 09/09/2025',nota:'',fecha:'',tipo:'km'},
+ {id:'rev160',n:'Revisión 160.000 km',km:160000,aviso:3000,cada:null,ult:'—',nota:'Planificar la correa',fecha:'',tipo:'km'},
+ {id:'correa',n:'Correa de distribución',km:160000,aviso:5000,cada:null,ult:'Desconocido',nota:'Manual: entre 160.000 y 180.000 km',fecha:'',tipo:'km'},
+ {id:'itv',n:'ITV',km:null,aviso:null,cada:null,ult:'',nota:'',fecha:'2026-11-26',tipo:'fecha'}]};
+var CAR_MIDAS=[['28/03/2025','~93.000','216,89','F-3802-2025-708'],['20/06/2025','~94.000','237,85','F-3802-2025-1369'],['09/09/2025','95.597','226,08','F-3802-2025-2231'],['07/01/2026','~153.000','174,59','F-3802-2026-41'],['09/01/2026','~153.000','213,03','F-3802-2026-67']];
+function kmF(n){return (n==null||!isFinite(n))?'—':Math.round(n).toLocaleString('es-ES');}
+function carData(){var c=S.car&&S.car.coche;return c&&c.items&&c.items.length?c:CAR_SEED;}
+function carKm(){
+ var c=S.car&&S.car.coche,r=c&&c.ref;if(!r)return null;
+ var sum=0,n=0;S.days.forEach(function(d){if(d.date>r.fecha){var k=num(d.f.kmTotales);if(isFinite(k)&&k>0){sum+=k;n++;}}});
+ return {km:Math.round(r.km+sum),ref:r,add:Math.round(sum),n:n};
+}
+function carState(i,kn){
+ if(i.tipo==='fecha'){
+  if(!i.fecha)return {s:'sin',t:'Sin fecha'};
+  var dd=dayDiff(i.fecha,TODAY);
+  return dd<0?{s:'venc',t:'Caducó hace '+(-dd)+' día'+(dd===-1?'':'s')+' ('+fD(i.fecha)+')'}:(dd<=30?{s:'prox',t:'Caduca en '+dd+' día'+(dd===1?'':'s')+' ('+fD(i.fecha)+')'}:{s:'ok',t:'Vigente hasta '+fD(i.fecha)});
+ }
+ if(i.km==null)return /^nunca/i.test(i.ult||'')?{s:'venc',t:'Nunca cambiado: sin fecha de cambio registrada'}:{s:'sin',t:'Sin límite marcado'};
+ if(kn==null)return {s:'sin',t:'Límite '+kmF(i.km)+' km · pon los km del coche para calcular'};
+ var r=i.km-kn,av=i.aviso==null?2000:i.aviso;
+ return r<0?{s:'venc',t:'Pasado en '+kmF(-r)+' km (límite '+kmF(i.km)+')'}:(r<=av?{s:'prox',t:'Faltan '+kmF(r)+' km (límite '+kmF(i.km)+')'}:{s:'ok',t:'Faltan '+kmF(r)+' km (límite '+kmF(i.km)+')'});
+}
+function carAlerts(){
+ var c=carData(),k=carKm(),out=[];
+ (c.items||[]).forEach(function(i){var st=carState(i,k?k.km:null);if(st.s==='venc'||st.s==='prox')out.push({i:i,st:st});});
+ return out;
+}
+function odoDias(){var o=S.car&&S.car.odo;if(!o||!o.length)return null;var f=o[0].fecha;return okIso(f)?dayDiff(TODAY,f):null;}
+function carSave(coche,cb){
+ doLive('setCoche',{coche:coche},function(j){S.car=S.car||{};S.car.coche=j.coche;S.carEd=null;if(cb)cb(j);});
+}
+function loadCar(force){
+ if(!LIVE||S.role!=='master')return;
+ var now=Date.now();if(!force&&S._carT&&now-S._carT<120000)return;S._carT=now;
+ call('getCoche',{}).then(function(j){S.car=S.car||{};if(j&&j.ok){S.car.coche=j.coche;S.car.err=false;}else if(!j||!j.authFail)S.car.err=true;
+  return call('listOdometros',{});}).then(function(j){S.car=S.car||{};if(j&&j.ok)S.car.odo=j.items;render(true);}).catch(function(){});
+}
+function extraPend(){return S.days.filter(function(d){return d.extra&&!d.extraOk&&!d.carga;});}
+function extraSumas(d){
+ var ex=d.extra||{},cs=ex.carreras||[],imp=0,ko=0,kl=0;
+ cs.forEach(function(c){imp+=+c.imp||0;ko+=+c.kmO||0;kl+=+c.kmL||0;});
+ return {n:cs.length,imp:Math.round(imp*100)/100,ko:ko,kl:kl};
+}
+function extraCuadra(d){
+ var cs=(d.extra&&d.extra.carreras)||[];if(!cs.length)return false;
+ var su=extraSumas(d),ns=num(d.f.nServ),ip=num(d.f.impresora);
+ if(isFinite(ns)&&ns!==su.n)return false;
+ if(isFinite(ip)&&Math.abs(ip-su.imp)>0.05)return false;
+ return isFinite(ns)||isFinite(ip);
+}
+function lecCard(){
+ if(!LIVE)return '';
+ var p=extraPend();if(!p.length)return '';
+ var ok=p.filter(extraCuadra),h='<div class="card stack"><h3 style="margin:0">Lecturas por confirmar ('+p.length+')</h3><div class="small muted">Lo que la app leyó solo del ticket de cada turno (carreras, licencia, fechas, FreeNow). No bloquea nada: sirve para tus estadísticas.</div>';
+ p.slice(0,8).forEach(function(d){var su=extraSumas(d);h+='<button class="li" data-act="open" data-id="'+d.id+'"><div class="dt"><small>'+dw(d.date)+'</small>'+dl(d.date)+'</div><div class="grow"><b>'+esc(fn1(uname(d.driver)))+'</b><div class="small muted">'+su.n+' carrera'+(su.n===1?'':'s')+(extraCuadra(d)?' · cuadran con el ticket':' · revisar')+'</div></div><span class="chip '+(extraCuadra(d)?'ok':'warn')+'">'+(extraCuadra(d)?'Cuadra':'Revisar')+'</span></button>';});
+ if(p.length>8)h+='<span class="small muted">… y '+(p.length-8)+' más (ábrelos desde Días).</span>';
+ if(ok.length)h+='<button class="btn ok block" data-act="lq-go"'+(S.busy?' disabled':'')+'>✓ Confirmar las '+ok.length+' que cuadran</button>';
+ return h+'</div>';
+}
+function odoCard(){
+ if(!LIVE||!S.car||S.car.err||!S.car.odo)return '';
+ var d=odoDias();
+ if(d!==null&&d<=ODO_DIAS)return '';
+ return '<div class="card stack"><h3 style="margin:0">Falta subir el odómetro</h3><div class="small muted">'+(d===null?'Todavía no has subido ninguno.':'El último fue hace '+d+' días ('+fD(S.car.odo[0].fecha)+').')+' Sube el ticket de totales para mantener al día los km del coche.</div><button class="btn yel block" data-act="odo-go">Subir odómetro</button></div>';
+}
+function carAlertCard(){
+ if(!LIVE||!S.car||S.car.err)return '';
+ var k=carKm(),al=carAlerts();
+ if(!k)return '<div class="card stack"><h3 style="margin:0">Coche: faltan los km</h3><div class="small muted">Pon una vez los km que marca el coche y la app los irá sumando sola con cada turno.</div><button class="btn sm yel" style="align-self:flex-start" data-act="car-go">Ir a Coche</button></div>';
+ if(!al.length)return '';
+ return '<div class="card stack" style="border-color:#e0a800"><h3 style="margin:0">Coche · '+al.length+' aviso'+(al.length>1?'s':'')+'</h3>'+al.slice(0,4).map(function(a){return '<div class="small"><b>'+esc(a.i.n)+'</b> · '+esc(a.st.t)+'</div>';}).join('')+'<button class="btn sm yel" style="align-self:flex-start" data-act="car-go">Ver el coche ('+kmF(k.km)+' km)</button></div>';
+}
+function masCoche(){
+ var sub=S.csub||'res';
+ var h='<div class="chips" role="tablist">'+[['res','Resumen'],['odo','Odómetro'],['fac','Facturas']].map(function(x){return '<button class="pick" role="tab" data-act="csub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
+ if(sub==='fac')return h+masFac();
+ if(!LIVE)return h+'<div class="card"><p class="muted">Esto funciona en la app real, no en la demostración.</p></div>';
+ if(S.car&&S.car.err)return h+'<div class="banner bad"><span>Falta añadir la parte nueva del servidor (2.09): Mejoras_2_09 en Apps Script y «Nueva versión».</span></div>';
+ if(!S.car)return h+'<p class="muted">Cargando…</p>';
+ return h+(sub==='odo'?masOdo():masCar());
+}
+function masCar(){
+ var c=carData(),k=carKm(),h='';
+ h+='<div class="card stack"><div class="row sp"><span class="label">Ford Tourneo Connect 2.0 EcoBlue · 0381MLT</span></div>';
+ if(k)h+='<div class="hbox hg"><span class="label" style="color:inherit;opacity:.85">Km del coche (estimados)</span><span class="big">'+kmF(k.km)+'</span><span class="small">Base '+kmF(k.ref.km)+' km el '+fD(k.ref.fecha)+' + '+kmF(k.add)+' km de '+k.n+' turno'+(k.n===1?'':'s')+'</span></div>';
+ else h+='<div class="hint">Pon los km que marca el coche ahora. Desde ahí la app suma los km de cada turno.</div>';
+ h+='<div class="row" style="flex-wrap:wrap"><div class="field grow" style="border-top:0;flex:1 1 150px;min-width:0"><label class="nm" for="carKm">Km que marca el coche</label><input id="carKm" data-car="km" type="text" inputmode="numeric" placeholder="p. ej. 187500" value="'+esc(S.carF&&S.carF.km!=null?S.carF.km:'')+'" autocomplete="off"></div><div class="field grow" style="border-top:0;flex:1 1 150px;min-width:0"><label class="nm" for="carFe">Fecha de esa lectura</label><input id="carFe" data-car="fecha" type="date" value="'+esc((S.carF&&S.carF.fecha)||TODAY)+'"></div></div>';
+ if(S.carErr)h+='<div class="banner bad"><span>'+esc(S.carErr)+'</span></div>';
+ h+='<button class="btn pri block" data-act="car-ref"'+(S.busy?' disabled':'')+'>Guardar km del coche</button></div>';
+ h+='<h3>Mantenimiento y avisos</h3>';
+ (c.items||[]).forEach(function(i){
+  var st=carState(i,k?k.km:null),ed=(S.carEd===i.id);
+  h+='<div class="carit '+st.s+'"><div class="row sp"><b>'+esc(i.n)+'</b><span class="chip '+(st.s==='venc'?'bad':(st.s==='prox'?'warn':(st.s==='ok'?'ok':'ink')))+'">'+(st.s==='venc'?'Vencido':(st.s==='prox'?'Próximo':(st.s==='ok'?'En regla':'Sin datos')))+'</span></div><div class="small">'+esc(st.t)+'</div>'+((i.ult||i.nota)?'<div class="small muted">'+(i.ult?'Último: '+esc(i.ult):'')+(i.ult&&i.nota?' · ':'')+esc(i.nota||'')+'</div>':'');
+  if(ed){
+   var F=S.carF2||{};
+   h+=(i.tipo==='fecha'?'<div class="field" style="border-top:0"><label class="nm">Caduca el</label><input data-car2="fecha" type="date" value="'+esc(F.fecha!=null?F.fecha:i.fecha)+'"></div>':'<div class="row" style="flex-wrap:wrap"><div class="field grow" style="border-top:0;flex:1 1 150px;min-width:0"><label class="nm">Límite (km)</label><input data-car2="km" type="text" inputmode="numeric" value="'+esc(F.km!=null?F.km:(i.km==null?'':i.km))+'"></div><div class="field grow" style="border-top:0;flex:1 1 150px;min-width:0"><label class="nm">Repetir cada (km)</label><input data-car2="cada" type="text" inputmode="numeric" value="'+esc(F.cada!=null?F.cada:(i.cada==null?'':i.cada))+'"></div><div class="field grow" style="border-top:0;flex:1 1 150px;min-width:0"><label class="nm">Avisar antes (km)</label><input data-car2="aviso" type="text" inputmode="numeric" value="'+esc(F.aviso!=null?F.aviso:(i.aviso==null?'':i.aviso))+'"></div></div>')+'<div class="field" style="border-top:0"><label class="nm">Nota</label><input data-car2="nota" type="text" maxlength="160" value="'+esc(F.nota!=null?F.nota:(i.nota||''))+'"></div><div class="row"><button class="btn sm ghost" data-act="car-edit" data-id="">Cancelar</button><button class="btn sm pri grow" data-act="car-save" data-id="'+esc(i.id)+'">Guardar</button></div>';
+  }else h+='<div class="row" style="flex-wrap:wrap"><button class="btn sm ghost" data-act="car-edit" data-id="'+esc(i.id)+'">Editar</button>'+(i.tipo==='fecha'?'':'<button class="btn sm ok" data-act="car-done" data-id="'+esc(i.id)+'">Hecho hoy</button>')+'</div>';
+  h+='</div>';
+ });
+ h+='<h3>Historial Midas</h3><div class="card stack"><div class="small muted">Del archivo HISTORIAL_MANTENIMIENTO_0381MLT (Drive). Total facturas: 1.068,44 €.</div><table class="ctbl"><tr><th>Fecha</th><th>Km</th><th>€</th></tr>'+CAR_MIDAS.map(function(r){return '<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>';}).join('')+'</table><span class="small muted">Para más facturas, usa la pestaña Facturas.</span></div>';
+ return h;
+}
+function masOdo(){
+ var h='<div class="card stack"><h3 style="margin:0">Subir odómetro</h3><div class="small muted">Foto del ticket de totales (odómetro). La app lo lee y tú compruebas antes de guardar. Se guarda en tu Drive (FOTOS_APP › ODOMETRO).</div>';
+ var d=odoDias();
+ h+='<div class="small">'+(d===null?'Todavía no hay ninguno guardado.':'Último: '+fD(S.car.odo[0].fecha)+' (hace '+d+' día'+(d===1?'':'s')+')')+'</div>';
+ var O=S.odo;
+ if(O&&O.thumb)h+='<div class="thumbs"><div class="th"><img alt="Odómetro" src="'+O.thumb+'"><button data-act="odo-rm" aria-label="Quitar la foto">'+I.no+'</button></div></div>';
+ h+='<label class="btn sm yel" style="align-self:flex-start"><input type="file" accept="image/*" class="fi" data-slot="odometro">'+I.cam+' '+(O&&O.thumb?'Cambiar foto':'Foto del ticket de odómetro')+'</label>';
+ if(O&&O.busy)h+='<p class="small muted">Leyendo el ticket…</p>';
+ if(O&&O.f){
+  h+='<div class="field" style="border-top:0"><label class="nm" for="odoFe">Fecha de la lectura</label><input id="odoFe" data-odo="_fecha" type="date" value="'+esc(O.fecha||TODAY)+'"></div><div class="xlg">';
+  TA_KEYS.concat(TP_KEYS).forEach(function(k){h+='<div><span class="label">'+esc(TA_L[k]||TP_L[k]||k)+'</span><input class="inp" data-odo="'+k+'" type="text" value="'+esc(O.f[k]==null?'':O.f[k])+'" autocomplete="off"></div>';});
+  h+='</div>';
+ }
+ if(S.odoErr)h+='<div class="banner bad"><span>'+esc(S.odoErr)+'</span></div>';
+ if(S.odoMsg)h+='<div class="hint">'+esc(S.odoMsg)+'</div>';
+ h+='<button class="btn pri block" data-act="odo-send"'+((S.busy||!O||!O.f)?' disabled':'')+'>'+(S.busy?'Guardando…':'Guardar odómetro')+'</button></div>';
+ var L=(S.car&&S.car.odo)||[];
+ if(L.length){
+  h+='<h3>Odómetros guardados</h3><div class="list">';
+  L.slice(0,12).forEach(function(o,ix){var c=o.campos||{},prev=L[ix+1],dk='';if(prev&&prev.campos&&isFinite(num(c.ta_km))&&isFinite(num(prev.campos.ta_km)))dk=' · +'+kmF(num(c.ta_km)-num(prev.campos.ta_km))+' km del taxímetro desde el anterior';h+='<div class="li"><div class="dt"><small>'+dw(o.fecha)+'</small>'+dl(o.fecha)+'</div><div class="grow"><b class="mono">'+(c.ta_km!=null?kmF(num(c.ta_km))+' km':'—')+'</b><div class="small muted">'+(c.ta_serv!=null?c.ta_serv+' servicios':'')+(c.ta_imp!=null?' · '+esc(c.ta_imp)+' €':'')+dk+'</div></div>'+(o.carpeta?'<a class="small" href="'+esc(o.carpeta)+'" target="_blank" rel="noopener">Fotos</a>':'')+'</div>';});
+  h+='</div>';
+ }
+ return h;
+}
+function extraHtml(d){
+ if(!LIVE||d.carga||!d.extra)return '';
+ var ex=d.extra,tk=ex.ticket||{},ed=S.xed&&S.xed.id===d.id,cs=ed?S.xed.ex.carreras:(ex.carreras||[]);
+ var h='<div class="card stack"><h3 style="margin:0">Lecturas extra del ticket</h3><div class="small muted">Datos que la app leyó sola. Compáralos con la foto y confirma: van a las columnas y a la hoja de carreras del diario.</div>';
+ var kv=[];
+ if(tk.kind)kv.push(['Tipo de ticket',tk.kind==='odometro'?'Odómetro':'Turno']);
+ if(tk.cond)kv.push(['Conductor del ticket',condName(tk.cond)]);
+ if(tk.lic)kv.push(['Licencia',tk.lic]);
+ if(tk.fIni)kv.push(['Inicio del ticket',fD(tk.fIni)]);
+ if(tk.fFin)kv.push(['Fin del ticket',fD(tk.fFin)]);
+ if(kv.length){h+='<div class="xlg">'+kv.map(function(x){return '<div><span class="label">'+x[0]+'</span><b class="mono">'+esc(String(x[1]))+'</b></div>';}).join('')+'</div>';}
+ if(cs.length||ed){
+  var su=extraSumas(ed?{extra:S.xed.ex}:d),ns=num(d.f.nServ),ip=num(d.f.impresora);
+  h+='<span class="label">Carreras ('+su.n+')</span><table class="ctbl"><tr><th>Ini</th><th>Fin</th><th>Km oc.</th><th>Km lib.</th><th>€</th>'+(ed?'<th></th>':'')+'</tr>';
+  cs.forEach(function(c,i){
+   if(ed)h+='<tr>'+['ini','fin','kmO','kmL','imp'].map(function(f){return '<td><input data-xr="'+i+'|'+f+'" type="text" inputmode="'+(f==='ini'||f==='fin'?'numeric':'decimal')+'" value="'+esc(String(c[f]==null?'':c[f]).replace('.',','))+'"></td>';}).join('')+'<td><button class="btn sm ghost" data-act="xr-del" data-i="'+i+'" aria-label="Quitar">✕</button></td></tr>';
+   else h+='<tr><td>'+esc(c.ini)+'</td><td>'+esc(c.fin)+'</td><td>'+esc(String(c.kmO))+'</td><td>'+esc(String(c.kmL))+'</td><td>'+esc(String(c.imp).replace('.',','))+'</td></tr>';
+  });
+  h+='<tr><th>Suma</th><th></th><th>'+su.ko+'</th><th>'+su.kl+'</th><th>'+String(su.imp).replace('.',',')+'</th>'+(ed?'<th></th>':'')+'</tr></table>';
+  var av=[];
+  if(isFinite(ns)&&ns!==su.n)av.push('El ticket dice '+ns+' servicios y se han leído '+su.n+' carreras.');
+  if(isFinite(ip)&&Math.abs(ip-su.imp)>0.05)av.push('El total del ticket es '+String(ip).replace('.',',')+' € y las carreras suman '+String(su.imp).replace('.',',')+' €.');
+  if(av.length)h+='<div class="banner bad"><span>'+esc(av.join(' '))+' Compruébalo con la foto: la lectura de carreras puede fallar.</span></div>';
+  else if(su.n)h+='<span class="chip ok" style="align-self:flex-start">✓ Las carreras cuadran con el ticket</span>';
+ }
+ var fn=ex.fn||[];
+ if(fn.length){h+='<span class="label">FreeNow ('+fn.length+')</span><div class="list">'+fn.map(function(x){return '<div class="li"><div class="grow"><b class="mono">'+esc(String(x.imp).replace('.',','))+' €</b><div class="small muted">'+esc(x.metodo||'')+(x.taxi?' · taxi':'')+(x.cerrado?' · precio cerrado':'')+(x.bon!==''&&x.bon!=null?' · bonif. '+esc(String(x.bon))+' €':'')+(x.fecha?' · '+esc(x.fecha):'')+'</div></div></div>';}).join('')+'</div>';}
+ var tt=ex.tot||{},tks=TA_KEYS.concat(TP_KEYS).filter(function(k){return tt[k]!=null&&tt[k]!=='';});
+ if(tks.length)h+='<span class="label">Totales del odómetro leídos</span><div class="xlg">'+tks.map(function(k){return '<div><span class="label">'+esc(TA_L[k]||TP_L[k]||k)+'</span><b class="mono">'+esc(String(tt[k]).replace('.',','))+'</b></div>';}).join('')+'</div>';
+ if(d.extraOk)h+='<span class="chip ok" style="align-self:flex-start">✓ Confirmadas por ti</span>';
+ else if(ed)h+='<div class="row"><button class="btn sm ghost" data-act="xtra-cancel">Cancelar</button><button class="btn sm ghost" data-act="xr-add">+ Carrera</button><button class="btn sm ok grow" data-act="xtra-ok" data-id="'+d.id+'">✓ Guardar corregido</button></div>';
+ else h+='<div class="row" style="flex-wrap:wrap"><button class="btn sm ok grow" data-act="xtra-ok" data-id="'+d.id+'"'+(S.busy?' disabled':'')+'>✓ Todo bien, guardar</button>'+(cs.length?'<button class="btn sm ghost" data-act="xtra-ed" data-id="'+d.id+'">Corregir carreras</button>':'')+'</div>';
+ return h+'</div>';
+}
 function masterMas(){
  var sub=S.msub||'mes';
  var h='<h2>Gestión</h2><div class="chips" role="tablist">'+[['mes','Mes'],['nom','Nóminas'],['fac','Coche'],['excel','Excel'],['pap','Papelera']].map(function(x){return '<button class="pick" role="tab" data-act="msub" data-v="'+x[0]+'" aria-pressed="'+(sub===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
- return h+srvBanner()+({mes:masMes,excel:masExcel,fac:masFac,cc:masCC,nom:nomMasterHtml,pap:papeleraHtml}[sub]||masMes)()+(sub==='excel'?gestionCard():'');
+ return h+srvBanner()+({mes:masMes,excel:masExcel,fac:masCoche,cc:masCC,nom:nomMasterHtml,pap:papeleraHtml}[sub]||masMes)()+(sub==='excel'?gestionCard():'');
 }
 function ymAdd(ym,n){var a=ym.split('-'),d=new Date(+a[0],+a[1]-1+n,1);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}
 var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1731,6 +1899,7 @@ function masCCtab(){
  var mn=MONTHS[+TODAY.slice(5,7)-1],o=ccMonth();
  var h=srvBanner();
  if(LIVE)ctaUids().forEach(function(u){ctaLoad(u);h+=ctaCard(u);});
+ try{h+=lecCard()+odoCard()+carAlertCard();}catch(e209){}
  h+='<h2>'+mn.charAt(0).toUpperCase()+mn.slice(1)+' · resumen</h2>';
  h+='<div class="hgrid"><div class="hbox hy"><span class="label" style="color:inherit;opacity:.75">Facturado total</span><span class="big">'+eur0(o.fm+o.fi)+'</span><span class="small">'+o.n+' turno'+(o.n===1?'':'s')+'</span></div><div class="hbox hg"><span class="label" style="color:inherit;opacity:.85">Kilómetros</span><span class="big">'+Math.round(o.km).toLocaleString('es-ES')+'</span><span class="small">km este mes</span></div></div>';
  h+='<div class="card stack"><div class="row sp"><span>Facturado por Mortada</span><b class="mono">'+eur(r2(o.fm))+'</b></div><div class="row sp"><span>Facturado por ti</span><b class="mono">'+eur(r2(o.fi))+'</b></div><div class="row sp"><span>Kilómetros realizados</span><b class="mono">'+Math.round(o.km).toLocaleString('es-ES')+' km</b></div></div>';
@@ -1865,7 +2034,7 @@ function loadMas(){
  var sub=S.msub||'mes';
  if(sub==='excel'){call('excelEstado',{}).then(function(j){if(j.ok)S.xl=j;return call('listVolcados',{});}).then(function(j){if(j&&j.ok)S.xlHist=j.items;render(true);});}
  if(sub==='mes'){var ym=S.mmes||(TODAY||iso(new Date())).slice(0,7);call('getFnMes',{mes:ym}).then(function(j){S.fnm=S.fnm||{};if(j.ok)S.fnm[ym]=j.comision;render(true);});call('excelMes',{mes:ym}).then(function(j){S.xlMes=S.xlMes||{};if(j.ok)S.xlMes[ym]=j;render(true);});}
- if(sub==='fac'){call('listInvoices',{}).then(function(j){if(j.ok)S.facs=j.items;render(true);});}
+ if(sub==='fac'){loadCar(true);call('listInvoices',{}).then(function(j){if(j.ok)S.facs=j.items;render(true);});}
 }
 function dayOf(d){return S.days.filter(function(x){return x.id===+d.id;})[0];}
 function masAct(a,d){
@@ -1891,6 +2060,53 @@ function masAct(a,d){
   case 'saldo-reload':saldoLoad();return true;
   case 'saldo-tog':S.saldoOpen=!S.saldoOpen;render(true);return true;
   case 'carga-ver':case 'carga-run':{var solo=(a==='carga-ver');S.busy=true;S.cargaMsg='';render(true);call('cargarHistorico',{mes:'2026-10',uid:2,lote:1,soloVer:solo}).then(function(j){S.busy=false;if(j.ok){S.cargaRes=j;S.cargaMsg=solo?('Vista previa: se cargarían '+j.n+' día'+(j.n===1?'':'s')+'. Todavía no se ha escrito nada.'):('Cargados '+j.n+' día'+(j.n===1?'':'s')+' con la marca «'+j.marca+'».');if(!solo){refresh();}}else if(!j.authFail)S.cargaMsg=j.msg||errMsg(j);render(true);});return true;}
+  case 'csub':S.csub=d.v;S.carErr='';S.odoErr='';render(true);if(d.v==='odo')loadCar(true);return true;
+  case 'car-go':S.mtab='mas';S.msub='fac';S.csub='res';render(true);loadMas();window.scrollTo(0,0);return true;
+  case 'odo-go':S.mtab='mas';S.msub='fac';S.csub='odo';render(true);loadMas();window.scrollTo(0,0);return true;
+  case 'car-ref':{
+   var ke=$('carKm'),fe2=$('carFe'),kv=num(ke?ke.value:''),fv=fe2?fe2.value:TODAY;
+   if(!isFinite(kv)||kv<1000||kv>999999){S.carErr='Escribe los km que marca el coche (por ejemplo 187500).';render(true);return true;}
+   if(!okIso(fv)){S.carErr='Pon la fecha de esa lectura.';render(true);return true;}
+   S.carErr='';var cd=JSON.parse(JSON.stringify(carData()));cd.ref={km:kv,fecha:fv};S.carF=null;
+   carSave(cd,function(){S.flash='Km del coche guardados: '+kmF(kv)+'.';});return true;}
+  case 'car-edit':S.carEd=d.id||null;S.carF2=null;render(true);return true;
+  case 'car-save':{
+   var cd2=JSON.parse(JSON.stringify(carData())),it=cd2.items.filter(function(x){return x.id===d.id;})[0];if(!it)return true;
+   var F2=S.carF2||{};
+   if(F2.fecha!=null)it.fecha=F2.fecha;
+   if(F2.km!=null)it.km=F2.km===''?null:num(F2.km);
+   if(F2.cada!=null)it.cada=F2.cada===''?null:num(F2.cada);
+   if(F2.aviso!=null)it.aviso=F2.aviso===''?null:num(F2.aviso);
+   if(F2.nota!=null)it.nota=F2.nota;
+   carSave(cd2);return true;}
+  case 'car-done':{
+   var cd3=JSON.parse(JSON.stringify(carData())),it3=cd3.items.filter(function(x){return x.id===d.id;})[0];if(!it3)return true;
+   var k3=carKm();it3.ult=(k3?kmF(k3.km)+' km · ':'')+fD(TODAY);
+   if(k3&&it3.cada)it3.km=k3.km+it3.cada;
+   carSave(cd3,function(){S.flash=it3.n+': anotado como hecho hoy.'+(k3&&it3.cada?' Próximo a los '+kmF(it3.km)+' km.':(it3.km!=null?' Revisa el nuevo límite en Editar.':''));});return true;}
+  case 'odo-rm':S.odo=null;S.odoErr='';S.odoMsg='';render(true);return true;
+  case 'odo-send':{
+   var O=S.odo;if(!O||!O.f||!O.file)return true;
+   var fe3=O.fecha||TODAY;if(!okIso(fe3)){S.odoErr='Pon la fecha de la lectura.';render(true);return true;}
+   S.odoErr='';S.odoMsg='';S.busy=true;render(true);
+   shrink(O.file).then(function(b){return call('guardarOdometro',{fecha:fe3,campos:O.f,photos:[{slot:'odometro',mime:'image/jpeg',b64:b}]});}).then(function(j){
+    S.busy=false;
+    if(j.ok){S.car=S.car||{};S.car.odo=j.items;S.odo=null;S.odoMsg='Odómetro guardado.';}else if(!j.authFail)S.odoErr=j.msg||errMsg(j);
+    render(true);
+   },function(){S.busy=false;S.odoErr=PHOTO_ERR;render(true);});return true;}
+  case 'xtra-ed':{var d7=dayOf(d);if(!d7||!d7.extra)return true;S.xed={id:d7.id,ex:JSON.parse(JSON.stringify(d7.extra))};S.xed.ex.carreras=S.xed.ex.carreras||[];render(true);return true;}
+  case 'xtra-cancel':S.xed=null;render(true);return true;
+  case 'xr-del':if(S.xed){S.xed.ex.carreras.splice(+d.i,1);render(true);}return true;
+  case 'xr-add':if(S.xed){S.xed.ex.carreras.push({ini:'',fin:'',kmO:0,kmL:0,imp:0});render(true);}return true;
+  case 'xtra-ok':{
+   var d6=dayOf(d);if(!d6)return true;
+   var exn=(S.xed&&S.xed.id===d6.id)?S.xed.ex:null;
+   if(exn){exn.carreras=(exn.carreras||[]).map(function(c){return {ini:String(c.ini||''),fin:String(c.fin||''),kmO:num(c.kmO)||0,kmL:num(c.kmL)||0,imp:num(c.imp)||0};});}
+   doLive('confirmarExtra',exn?{key:d6.key,extra:exn}:{key:d6.key},function(j){S.xed=null;S.flash='Lecturas extra guardadas en el diario.';});return true;}
+  case 'lq-go':{
+   var lst=extraPend().filter(extraCuadra);if(!lst.length)return true;
+   S.busy=true;render(true);
+   lst.reduce(function(p,dd){return p.then(function(){return call('confirmarExtra',{key:dd.key});});},Promise.resolve()).then(function(){S.busy=false;S.flash='Confirmadas '+lst.length+' lecturas.';return refresh();},function(){S.busy=false;S.err='No he podido confirmarlas todas. Prueba de una en una.';render(true);});return true;}
   case 'msub':S.msub=d.v;S.xlMsg='';S.ccErr='';render(true);loadMas();return true;
   case 'cc-open':ccLoad();return true;
   case 'fotos-ordenar':S.busy=true;S.xlMsg='';render(true);call('ordenarFotos',{}).then(function(j){S.busy=false;if(j.ok)S.xlMsg=j.movidas?('Hecho: '+j.movidas+' foto'+(j.movidas>1?'s':'')+' colocada'+(j.movidas>1?'s':'')+' por conductor y día en Drive (FOTOS_APP).'):'Ya estaba todo ordenado.';else if(!j.authFail)S.xlMsg=j.msg||errMsg(j);render(true);});return true;
@@ -1963,7 +2179,7 @@ function masterDetail(){
  if(d.motivoAcep&&!d.carga)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
  if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x,ix){return '<div class="stack" style="border-top:1px solid var(--line);padding-top:6px"><p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>'+(x.ok?'<span class="chip ok">✓ Revisado por ti</span>':(LIVE?'<div class="row"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+ix+'">Está bien</button><button class="btn sm ghost" data-act="ed-open" data-id="'+d.id+'">Corregir</button></div>':''))+'</div>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
-h+=lectHtml(d)+edHtml(d);
+h+=lectHtml(d)+extraHtml(d)+edHtml(d);
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
  if(d.pend.length){var rz2=incidReasons(d);h+='<div class="hint">Pendiente de confirmar: '+esc(rz2.length?rz2.join(' · '):d.pend.join(', '))+'.</div>';}
  if(LIVE)h+='<div class="card stack"><h3 style="margin:0">Cambiar la fecha de este turno</h3><p class="small muted">Si se subió con un día equivocado. Si ya estaba en tu Excel, se quita de esa fila (con copia de seguridad) y se pasa a la del día correcto.</p>'+(S.cf&&S.cf.id===d.id?'<input class="inp" type="date" data-cf="fecha" max="'+TODAY+'" value="'+esc(S.cf.fecha)+'"><input class="inp" data-cf="motivo" maxlength="200" placeholder="Motivo (obligatorio)" value="'+esc(S.cf.motivo)+'" autocomplete="off">'+(S.cf.err?'<span class="small" style="color:var(--bad)">'+esc(S.cf.err)+'</span>':'')+'<div class="row"><button class="btn sm ghost" data-act="cf-x">Cancelar</button><button class="btn sm pri grow" data-act="cf-go" data-id="'+d.id+'"'+(S.busy?' disabled':'')+'>Cambiar a esa fecha</button></div>':'<button class="btn sm ghost" style="align-self:flex-start" data-act="cf-open" data-id="'+d.id+'">Cambiar la fecha ('+dw(d.date)+' '+dl(d.date)+')</button>')+'</div>';
@@ -2229,7 +2445,7 @@ function shiftInfo(t){
   if((m=/km\s*libre\W{0,6}(\d{1,3}[.,]\d)(?!\d)/i.exec(t)))o.libre=dv(m[1]);
   if((m=/km\s*ocupado\W{0,6}(\d{1,3}[.,]\d)(?!\d)/i.exec(t)))o.ocup=dv(m[1]);
   if((m=/turno\W{0,4}(\d{4,6})\b/i.exec(t)))o.turno=m[1];
-  if((m=/n[oº°]?\.?\s*servicios\W{0,6}(\d{1,3})(?![\d.,])/i.exec(t)))o.nserv=+m[1];
+  if((m=/(?:^|[^a-z])n[oº°e?¿.]{0,2}\s*servicios\W{0,6}(\d{1,3})(?![\d.,])/i.exec(t)))o.nserv=+m[1];
   var a=t.search(/listado\s*de\s*carreras/i),b=t.search(/informaci[oó]n\s*de\s*turno/i);if(a<0)a=0;
   if(b>a){var blk=t.slice(a,b);o.blk=true;
    o.rows=(blk.match(/\b\d{1,2}\s*[:;]\s*\d{2}\s+\d{1,2}\s*[:;]\s*\d{2}\b/g)||[]).length;
@@ -2522,6 +2738,37 @@ function ticketWho(raws){
  else if(/listado\s*de\s*carreras|informaci\w*\s*de\s*turno|fecha\s*inicio|hora\s*inicio/i.test(all))kind='turno';
  return {cond:(best>=1&&best<=9)?best:null,condN:bn,kind:kind};
 }
+
+/* v2.09: datos extra del ticket de turno: listado de carreras, licencia y fechas. Solo lee, nunca bloquea nada */
+function parseCarreras(texts){
+ var all={},first=[],best=[];
+ (texts||[]).forEach(function(t){
+  var rows=[],re=/(?:^|[^\d])(\d{2})[:;.1|]?(\d{2})\s+(\d{2})[:;.1|]?(\d{2})\s+(\d{1,3})\s+(\d{1,3})\s+(\d{1,3}[.,\-°:'+]\d{2})(?!\d)/g,m;
+  t=String(t||'');
+  while((m=re.exec(t))){
+   var h1=+m[1],n1=+m[2],h2=+m[3],n2=+m[4];if(h1>23||n1>59||h2>23||n2>59)continue;
+   rows.push({ini:m[1]+':'+m[2],fin:m[3]+':'+m[4],kmO:+m[5],kmL:+m[6],imp:parseFloat(m[7].replace(/[,\-°:'+]/,'.'))});
+  }
+  rows.forEach(function(r){var k=r.ini+'|'+r.fin,o=all[k]=all[k]||{v:{},bk:null};var vk=r.kmO+'/'+r.kmL+'/'+r.imp;o.v[vk]=(o.v[vk]||0)+1;if(!o.bk||o.v[vk]>o.v[o.bk]){o.bk=vk;o.r=r;}});
+  if(rows.length>best.length)best=rows;
+ });
+ var seen={},out=[];
+ best.forEach(function(r){var k=r.ini+'|'+r.fin;if(seen[k])return;seen[k]=1;out.push(all[k].r);});
+ Object.keys(all).forEach(function(k){if(!seen[k]){seen[k]=1;out.push(all[k].r);}});
+ return out;
+}
+function ticketExtra(raws){
+ var T=(raws||[]).map(function(x){return String(x||'');}),o={},cnt={};
+ function vote(k,v){if(!v)return;var q=cnt[k]=cnt[k]||{};q[v]=(q[v]||0)+1;}
+ T.forEach(function(t){var m;
+  if((m=/ll?i?cencia\W{0,4}(\d{3,5})(?!\d)/i.exec(t)))vote('lic',m[1]);
+  if((m=/fecha\s*inicio\W{0,4}(\d{2})\s*[\/.\-]\s*(\d{2})\s*[\/.\-]\s*(20\d{2})/i.exec(t)))vote('fIni',m[3]+'-'+m[2]+'-'+m[1]);
+  if((m=/fecha\s*final\W{0,4}(\d{2})\s*[\/.\-]\s*(\d{2})\s*[\/.\-]\s*(20\d{2})/i.exec(t)))vote('fFin',m[3]+'-'+m[2]+'-'+m[1]);
+ });
+ Object.keys(cnt).forEach(function(k){var b=null,bn=0;for(var v in cnt[k])if(cnt[k][v]>bn){bn=cnt[k][v];b=v;}if(b)o[k]=b;});
+ return o;
+}
+window.__parseCarreras=parseCarreras;window.__ticketExtra=ticketExtra;
 window.__ticketWho=ticketWho;window.__parseTotales=function(t){return parseTotales(t);};window.__paper=function(f){return ocrBitmap(f).then(function(bm){var w=bm.width||bm.naturalWidth,h=bm.height||bm.naturalHeight;return {w:w,h:h,box:ocrPaper(bm,w,h)};});};
 function ocrReadFile(kind,file){
  if(kind==='totales')return ocrReadTotales(file);
@@ -2553,7 +2800,7 @@ function ocrReadFile(kind,file){
     var pl=LECTOR.prep(ocrGray(bm,0,0,w0,top,ltw,lth),ltw,lth,25);
     return ocrRec(wk,ocrCanvas(pl.norm,ltw,lth),6).then(function(a){listTexts.push(a.text);return ocrRec(wk,ocrCanvas(pl.th,ltw,lth),6);}).then(function(b){listTexts.push(b.text);});
    }
-   function fin(){var r=LECTOR.readTicket(texts,listTexts);r.raw=texts.concat(listTexts);var tw_=ticketWho(r.raw);r.cond=tw_.cond;r.kind=tw_.kind;var l1=ocrLoc('ticket',r,D1,cs,top,w0,h0),l2=ocrLoc('ticket',r,D2,cs,top,w0,h0);r.loc=l1;r.ar=h0/w0;for(var k in l2)if(!r.loc[k])r.loc[k]=l2[k];
+   function fin(){var r=LECTOR.readTicket(texts,listTexts);r.raw=texts.concat(listTexts);var tw_=ticketWho(r.raw);r.cond=tw_.cond;r.kind=tw_.kind;try{r.carr=parseCarreras(r.raw);r.tkx=ticketExtra(r.raw);}catch(e209){}var l1=ocrLoc('ticket',r,D1,cs,top,w0,h0),l2=ocrLoc('ticket',r,D2,cs,top,w0,h0);r.loc=l1;r.ar=h0/w0;for(var k in l2)if(!r.loc[k])r.loc[k]=l2[k];
     if(rot){r.rot=rot;r.loc=ocrUnrot(r.loc,rot,w0,h0);}return r;}
    function todoOk(r){var q=r.q||{};return !!(q.horaIni&&q.horaIni.ok&&q.horaFin&&q.horaFin.ok&&q.impresora&&q.impresora.ok&&q.kmTotales&&q.kmTotales.ok);}
    return ocrRec(wk,ocrCanvas(pb.norm,tw,th),6).then(function(d1){D1=d1;texts.push(d1.text);return ocrRec(wk,ocrCanvas(pb.th,tw,th),6);}).then(function(d2){D2=d2;texts.push(d2.text);return listPass();}).then(function(){
@@ -2570,7 +2817,7 @@ window.__tpvDate=tpvDate;
 function ocrApply(r,meta){
  S.ocr=S.ocr||{};
  if(r&&r.extra&&meta&&meta.slot==='taximetro')S.tkInfo=r.extra;
- if(r&&meta&&meta.slot==='taximetro'){if(r.cond)S.ticketCond=r.cond;if(r.kind)S.ticketKind=r.kind;}
+ if(r&&meta&&meta.slot==='taximetro'){if(r.cond)S.ticketCond=r.cond;if(r.kind)S.ticketKind=r.kind;try{if(r.carr&&r.carr.length>=((S.carr||[]).length))S.carr=r.carr;if(r.tkx){S.tkx=S.tkx||{};for(var q209 in r.tkx)if(r.tkx[q209]&&!S.tkx[q209])S.tkx[q209]=r.tkx[q209];}}catch(e209){}}
  if(meta&&meta.slot==='tpv'){S.tpvParts=S.tpvParts||{};if(r.f&&r.f.tpv!=null)S.tpvParts[meta.idx]=r.f.tpv;if(r.fecha&&!S.tpvPicked)S.tpvDate=r.fecha;var ks=Object.keys(S.tpvParts);if(ks.length>1&&!(S.ocr.tpv&&S.ocr.tpv.typed)){var sm=0;ks.forEach(function(q){sm+=S.tpvParts[q];});S.form.tpv=Math.round(sm*100)/100;S.ocr.tpv={ok:true,slot:'tpv',idx:0,ar:r.ar||1.5,sum:ks.length};return;}}
  if(r&&r.fecha&&meta&&meta.slot==='taximetro'){S.ticketDate=r.fecha;S.ticketDateOk=!!r.fechaOk;if(!S.editing&&r.fecha<=TODAY&&(r.fechaOk||!S.shiftSel||S.shiftFromTicket)){S.shiftSel=r.fecha;S.mineDate=r.fecha;S.shiftFromTicket=true;}}
  if(r.cands)for(var ck in r.cands){var cl=r.cands[ck];if(cl&&cl.length&&!S.ocr[ck]&&ocrEmpty(S.form[ck])&&!(r.f&&r.f[ck]!=null)){S.ocr[ck]={ok:false,cands:cl,slot:meta&&meta.slot,idx:meta?meta.idx:0,box:null,ar:r.ar||1.5,nolee:true};}}
@@ -2852,7 +3099,7 @@ function act(a,d){
   case 'sound':S.sound=!S.sound;if(S.sound)beep(1);render(true);return;
   case 'rm':
    if(d.k==='gasto'){S.exThumbs.splice(+d.i,1);S.exFiles.splice(+d.i,1);}
-   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(S.files[d.k])S.files[d.k].splice(+d.i,1);if(d.k==='freenow'&&S.fn){S.fn.splice(+d.i,1);fnSync();}if(d.k==='tpv'){var np={};Object.keys(S.tpvParts||{}).forEach(function(q){q=+q;if(q<+d.i)np[q]=S.tpvParts[q];else if(q>+d.i)np[q-1]=S.tpvParts[q];});S.tpvParts=np;var kq=Object.keys(np);if(kq.length>1){var sm2=0;kq.forEach(function(q){sm2+=np[q];});S.form.tpv=Math.round(sm2*100)/100;}}if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(d.k==='totales'&&!arr.length){TA_KEYS.concat(TP_KEYS).forEach(function(q){delete S.form[q];if(S.ocr)delete S.ocr[q];});S.taQ=null;S.totKind=null;}if(d.k==='taximetro'&&!arr.length){S.ticketCond=null;S.ticketKind=null;}if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
+   else{var arr=S.thumbs[d.k]||[];arr.splice(+d.i,1);if(S.files[d.k])S.files[d.k].splice(+d.i,1);if(d.k==='freenow'&&S.fn){S.fn.splice(+d.i,1);fnSync();}if(d.k==='tpv'){var np={};Object.keys(S.tpvParts||{}).forEach(function(q){q=+q;if(q<+d.i)np[q]=S.tpvParts[q];else if(q>+d.i)np[q-1]=S.tpvParts[q];});S.tpvParts=np;var kq=Object.keys(np);if(kq.length>1){var sm2=0;kq.forEach(function(q){sm2+=np[q];});S.form.tpv=Math.round(sm2*100)/100;}}if(d.k==='servicios')S.caps=Math.max(0,S.caps-1);if(d.k==='totales'&&!arr.length){TA_KEYS.concat(TP_KEYS).forEach(function(q){delete S.form[q];if(S.ocr)delete S.ocr[q];});S.taQ=null;S.totKind=null;}if(d.k==='taximetro'&&!arr.length){S.ticketCond=null;S.ticketKind=null;S.carr=null;S.tkx=null;}if(!arr.length&&!(d.k==='servicios'&&S.caps)&&S.slots[d.k]==='ok')S.slots[d.k]='none';}
    render(true);return;
   case 'finc-open':S.finc=S.finc||{};S.finc[d.k]=S.finc[d.k]||{};S.finc[d.k].open=true;render(true);return;
   case 'finc-cancel':S.finc=S.finc||{};S.finc[d.k]={open:false,text:(S.finc[d.k]||{}).text};render(true);return;
@@ -3000,7 +3247,7 @@ function dayId(d){return (+d.uid)*100000+Math.round(Date.parse(d.fecha+'T12:00:0
 function mapDay(d){
  var dt=d.datos||{},f=dt.form||{},caps=+dt.caps||0,pend=dt.pend||[],pct=(d.uid===1)?0:(d.pct||45);
  var res=verify(f,caps,pct,pend,d.uid===1);
- return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||'',carga:dt.carga||null,reg:dt.reg||'',fcheck:d.fechaCheck||'',enviado:d.enviado||'',hist:d.hist||[],volcado:d.volcado||'',lectOk:dt.lectOk||''};
+ return {id:dayId(d),key:d.key,date:d.fecha,driver:d.uid,f:f,caps:caps,pct:pct,res:res,estado:d.estado||res.overall,accepted:d.checkIvan==='Aceptado',motivos:dt.motivos||[],texto:d.nota||'',pend:pend,incid:dt.incid||[],coche:dt.coche||null,carpeta:d.carpeta||'',correccion:d.correccion||'',motivoAcep:d.motivoAcep||'',carga:dt.carga||null,reg:dt.reg||'',fcheck:d.fechaCheck||'',enviado:d.enviado||'',hist:d.hist||[],volcado:d.volcado||'',lectOk:dt.lectOk||'',extra:dt.extra||null,extraOk:dt.extraOk||''};
 }
 function mapReq(r){
  var day=S.days.filter(function(x){return x.key===r.clave;})[0],st=String(r.estado||'').toUpperCase(),e;
@@ -3057,6 +3304,7 @@ function applySnap(j){
  }
  offerDraft();
  srv204();
+ try{if(S.role==='master')loadCar();}catch(e209){}
  if(LIVE&&S.role){var us=S.role==='master'?ctaUids():[S.me.id];us.forEach(function(u){if(S.cta&&S.cta[u]&&S.cta[u].d)S.cta[u].t=0;ctaLoad(u);});if(S.role!=='master')nomLoad(true);}
 }
 function refresh(){
@@ -3151,6 +3399,20 @@ function regSync(){
  S.regLast=k;if(!S.regId)S.regId=regNew();regPing('EN_CURSO');
 }
 function regFoot(){return (LIVE&&S.regId&&S.view==='driver'&&(S.screen==='up'||S.screen==='confirm'||S.screen==='result'))?'<div class="small muted" style="text-align:center;opacity:.55;font-size:11px;margin-top:10px">Registro '+esc(S.regId)+' · '+APP_V+'</div>':'';}
+function buildExtra(){
+ var ex={};
+ try{
+  if(S.carr&&S.carr.length)ex.carreras=S.carr.slice(0,60);
+  var tk={};if(S.ticketCond)tk.cond=S.ticketCond;if(S.ticketKind)tk.kind=S.ticketKind;
+  if(S.tkx){if(S.tkx.lic)tk.lic=S.tkx.lic;if(S.tkx.fIni)tk.fIni=S.tkx.fIni;if(S.tkx.fFin)tk.fFin=S.tkx.fFin;}
+  if(Object.keys(tk).length)ex.ticket=tk;
+  var fn=(S.fn||[]).map(function(x){return {imp:x.imp,metodo:x.metodo,taxi:!!x.taxi,cerrado:!!x.cerrado,bon:(x.bon==null?'':x.bon),fecha:x.fecha||''};}).filter(function(x){return fnNum(x.imp)>0;});
+  if(fn.length)ex.fn=fn.slice(0,40);
+  var tot={};TA_KEYS.concat(TP_KEYS).forEach(function(k){var v=S.form[k];if(v!=null&&v!=='')tot[k]=v;});
+  if(Object.keys(tot).length)ex.tot=tot;
+ }catch(e){}
+ return Object.keys(ex).length?ex:null;
+}
 function sendLive(){
  if(S.busy)return;
  var n=$('nota');if(n)S.texto=n.value;
@@ -3170,6 +3432,7 @@ function sendLive(){
  if(!S.regId)S.regId=regNew();
  if(!S.editing&&!S.shiftSel)S.shiftSel=shiftDate();
  var req={reg:S.regId,version:APP_V,audit:aud,form:f,caps:S.caps,pend:pend,incid:inc,coche:coche,motivos:S.motivos.slice(),texto:S.texto,date:shiftDate(),second:!!S.second,mine:!!S.mine};
+ try{var ex209=buildExtra();if(ex209)req.extra=ex209;}catch(e209){}
  if(S.editing){var ed=dayById(S.editing);if(!ed){S.sendErr='No se encuentra el día a corregir.';render(true);return;}req.editKey=ed.key;req.date=ed.date;}
  S.busy=true;S.sendErr='';var t0=Date.now();S.tm=S.tm||{ocr:[]};
  var nF=0;Object.keys(S.files).forEach(function(k){nF+=(S.files[k]||[]).length;});
@@ -4192,6 +4455,10 @@ document.addEventListener('input',function(e){
  if(t.dataset.cf&&S.cf)S.cf[t.dataset.cf]=t.value;
  if(t.dataset.x)S.ex[t.dataset.x]=t.value;
  if(t.dataset.fac&&S.fac)S.fac[t.dataset.fac]=t.value;
+ if(t.dataset.car){S.carF=S.carF||{};S.carF[t.dataset.car]=t.value;}
+ if(t.dataset.car2){S.carF2=S.carF2||{};S.carF2[t.dataset.car2]=t.value;}
+ if(t.dataset.odo&&S.odo){if(t.dataset.odo==='_fecha')S.odo.fecha=t.value;else{S.odo.f=S.odo.f||{};S.odo.f[t.dataset.odo]=t.value;}}
+ if(t.dataset.xr&&S.xed){var xp=t.dataset.xr.split('|'),xc=S.xed.ex.carreras[+xp[0]];if(xc)xc[xp[1]]=t.value;}
  if(t.dataset.c){S.coche.texto=t.value;var b=$('closeBtn');if(b)b.textContent=(S.coche.chips.length||t.value.trim())?'Añadir y cerrar turno':'Saltar y cerrar turno';}
 });
 document.addEventListener('change',function(e){
@@ -4205,6 +4472,16 @@ document.addEventListener('change',function(e){
  if(t.dataset&&t.dataset.slot==='nomina'&&t.files&&t.files.length){var nfF=t.files[0];try{t.value='';}catch(x){}S.nomF=S.nomF||{};S.nomF.file=nfF;S.nomF.name=nfF.name||'nómina';S.nomErr='';render(true);return;}
  if(t.dataset&&t.dataset.aj&&t.type==='checkbox'&&S.aj){S.aj.anotar=t.checked;return;}
  if(t.dataset&&t.dataset.aj==='hasta'&&S.aj){render(true);return;}
+ if(t.dataset&&t.dataset.slot==='odometro'&&t.files&&t.files.length){
+  var of=t.files[0],ou='';try{ou=URL.createObjectURL(of);}catch(x){}
+  S.odo={file:of,thumb:ou,busy:true,f:null,fecha:TODAY};S.odoErr='';S.odoMsg='';try{t.value='';}catch(x){}
+  render(true);
+  var og=S.odo;
+  var fin=function(r){if(S.odo!==og)return;og.busy=false;og.f=(r&&r.f)?JSON.parse(JSON.stringify(r.f)):{};var any=Object.keys(og.f).length;if(!any)S.odoErr='No he podido leer el ticket. Escribe los datos a mano o repite la foto.';if(og.f.ta_fecha){var dm=/(\d{2})[\/.\-](\d{2})[\/.\-](20\d{2})/.exec(og.f.ta_fecha);if(dm)og.fecha=dm[3]+'-'+dm[2]+'-'+dm[1];}render(true);};
+  try{ocrReadTotales(of).then(fin,function(){fin(null);});}catch(x){fin(null);}
+  setTimeout(function(){if(S.odo===og&&og.busy)fin(null);},60000);
+  return;
+ }
  if(t.dataset&&t.dataset.slot==='factura'&&t.files&&t.files.length){
   var ff=t.files[0],uu='';try{uu=URL.createObjectURL(ff);}catch(x){}
   S.facFile=ff;S.fac=S.fac||{prov:'',imp:'',fecha:'',tipo:'',thumb:''};S.fac.thumb=uu;try{t.value='';}catch(x){}
