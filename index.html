@@ -563,7 +563,7 @@ button.c{cursor:pointer}
 <main class="col pad" id="app"></main>
 <nav class="tabs"><div class="col pad" id="tabs"></div></nav>
 
-<script>var APP_V='2.11';</script>
+<script>var APP_V='2.12';</script>
 <script>window.TURNOS_URL="https://script.google.com/macros/s/AKfycbxNpC5SUYZPvurlMHYPso5MHvhusatlqRWJq2wvp53cgRstDIGKOkBST5wPdSqSiCm3/exec";</script>
 <script>
 (function(){
@@ -2145,6 +2145,7 @@ function edInit(d){
  var c={};for(var k in o)c[k]=o[k];return {id:d.id,o:o,f:c,motivo:'',err:''};
 }
 
+function fotosCard(d){var f=d&&d.datos&&d.datos.fotos;if(!f||!(f.ok<f.n))return '';return '<div class="banner warn"><b>Fotos sin subir: '+f.ok+' de '+f.n+'</b><span>El conductor las está subiendo o las subirá cuando tenga cobertura.</span></div>';}
 function dupCard(d){
  if(!LIVE||!d.incid)return '';
  var ix=-1;d.incid.forEach(function(x,i){if(x&&x.slot==='Día repetido'&&!x.ok)ix=i;});
@@ -2189,7 +2190,7 @@ function masterDetail(){
  if(d.motivoAcep&&!d.carga)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
  if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x,ix){return '<div class="stack" style="border-top:1px solid var(--line);padding-top:6px"><p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>'+(x.ok?'<span class="chip ok">✓ Revisado por ti</span>':(LIVE?'<div class="row"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+ix+'">Está bien</button><button class="btn sm ghost" data-act="ed-open" data-id="'+d.id+'">Corregir</button></div>':''))+'</div>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
-h+=dupCard(d)+lectHtml(d)+extraHtml(d)+edHtml(d);
+h+=fotosCard(d)+dupCard(d)+lectHtml(d)+extraHtml(d)+edHtml(d);
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
  if(d.pend.length){var rz2=incidReasons(d);h+='<div class="hint">Pendiente de confirmar: '+esc(rz2.length?rz2.join(' · '):d.pend.join(', '))+'.</div>';}
  if(LIVE)h+='<div class="card stack"><h3 style="margin:0">Cambiar la fecha de este turno</h3><p class="small muted">Si se subió con un día equivocado. Si ya estaba en tu Excel, se quita de esa fila (con copia de seguridad) y se pasa a la del día correcto.</p>'+(S.cf&&S.cf.id===d.id?'<input class="inp" type="date" data-cf="fecha" max="'+TODAY+'" value="'+esc(S.cf.fecha)+'"><input class="inp" data-cf="motivo" maxlength="200" placeholder="Motivo (obligatorio)" value="'+esc(S.cf.motivo)+'" autocomplete="off">'+(S.cf.err?'<span class="small" style="color:var(--bad)">'+esc(S.cf.err)+'</span>':'')+'<div class="row"><button class="btn sm ghost" data-act="cf-x">Cancelar</button><button class="btn sm pri grow" data-act="cf-go" data-id="'+d.id+'"'+(S.busy?' disabled':'')+'>Cambiar a esa fecha</button></div>':'<button class="btn sm ghost" style="align-self:flex-start" data-act="cf-open" data-id="'+d.id+'">Cambiar la fecha ('+dw(d.date)+' '+dl(d.date)+')</button>')+'</div>';
@@ -2250,8 +2251,9 @@ function instCard(){
  if(S.instHelp)return h+'<div class="hint">'+(ios?'En iPhone: abre esta página en Safari, pulsa Compartir (el cuadrado con la flecha) y elige «Añadir a pantalla de inicio».':'En Android: abre el menú ⋮ del navegador y pulsa «Instalar aplicación» o «Añadir a pantalla de inicio».')+'</div><button class="btn pri" data-act="inst-no">Entendido</button></div>';
  return h+'<div class="row"><button class="btn ghost grow" data-act="inst-no">Seguir en el navegador</button><button class="btn pri grow" data-act="inst-yes">Instalar app</button></div></div>';
 }
-function colaBanner(){return '<div class="banner warn"><b>Tienes '+S.colaN+' turno'+(S.colaN>1?'s':'')+' guardado'+(S.colaN>1?'s':'')+' sin enviar</b><span>Se envía solo en cuanto haya señal, con la app abierta.'+(S.colaErr?' '+esc(S.colaErr):'')+'</span><button class="btn sm yel" style="align-self:flex-start" data-act="col-now">Enviar ahora</button></div>';}
-function colaCount(){return idb('get','cola').then(function(a){S.colaN=(a&&a.length)||0;S.colaList=(a||[]).map(function(x){var r=x.req||{},f=r.form||{};return {t:x.t,date:r.date||'',total:f.total,reg:r.reg||''};});});}
+function colaBanner(){var soloF=S.colaFotos&&S.colaFotos===S.colaN;return '<div class="banner warn"><b>'+(soloF?'Tienes fotos de un turno sin subir (el turno ya está enviado)':'Tienes '+S.colaN+' turno'+(S.colaN>1?'s':'')+' guardado'+(S.colaN>1?'s':'')+' sin enviar')+'</b><span>Se envía solo en cuanto haya señal, con la app abierta.'+(S.colaErr?' '+esc(S.colaErr):'')+'</span><button class="btn sm yel" style="align-self:flex-start" data-act="col-now">Enviar ahora</button></div>';}
+function colaCount(){return idb('get','cola').then(function(a){S.colaN=(a&&a.length)||0;S.colaFotos=(a||[]).filter(function(x){return x.job;}).length;S.colaList=(a||[]).map(function(x){var r=x.req||{},f=r.form||{},jb=x.job||{};return {t:x.t,date:r.date||jb.date||'',total:f.total,reg:r.reg||jb.reg||'',fotos:jb.photos?jb.photos.length:0};});});}
+function colaAddJob(job){return idb('get','cola').then(function(a){a=a||[];a.push({t:Date.now(),job:job});return idb('put','cola',a);}).then(colaCount);}
 function colaAdd(req){return idb('get','cola').then(function(a){a=a||[];a.push({t:Date.now(),req:req});return idb('put','cola',a);}).then(colaCount);}
 function colaFlush(man){
  if(man===true)S.colaMan=true;
@@ -2262,9 +2264,16 @@ function colaFlush(man){
  function next(){
   return idb('get','cola').then(function(a){
    if(!a||!a.length){S.colaN=0;S.colaList=[];fin();return refresh();}
-   return call('submitShift',a[0].req).then(function(j){
-    if(j.ok||j.error==='DUPLICADO'){a.shift();S.colaErr='';return idb('put','cola',a).then(function(){S.flash='Listo: el turno guardado sin señal ya está enviado a Iván.';return colaCount().then(next);});}
+   var e0=a[0],pj=e0.job?uploadPhotos(e0.job.key,e0.job.photos,null).then(function(r){return r.ok?{ok:true,rest:[]}:{ok:false,error:'SIN_RED',rest:r.rest};}):sendShift(e0.req,null);
+   return pj.then(function(j){
+    if(j.ok&&j.rest&&j.rest.length){ /* el turno ya está; faltan fotos: se queda como trabajo de fotos */
+     a[0]={t:e0.t,job:{key:e0.job?e0.job.key:j.key,date:e0.job?e0.job.date:(e0.req||{}).date,reg:e0.job?e0.job.reg:(e0.req||{}).reg,photos:j.rest}};
+     S.colaErr=S.colaMan?'Sigue sin haber cobertura para las fotos. Se subirán solas en cuanto vuelva (deja la app abierta).':'';
+     return idb('put','cola',a).then(function(){fin();return colaCount().then(function(){render(true);});});}
+    if(j.error==='SIN_RED'&&e0.job&&j.rest){a[0].job.photos=j.rest;}
+    if(j.ok||j.error==='DUPLICADO'){a.shift();S.colaErr='';return idb('put','cola',a).then(function(){S.flash=e0.job?'Listo: las fotos pendientes ya están subidas.':'Listo: el turno guardado sin señal ya está enviado a Iván.';return colaCount().then(next);});}
     var man=S.colaMan;
+    if(j.error==='SIN_RED'&&e0.job&&j.rest){idb('put','cola',a);}
     if(j.error==='SIN_RED')S.colaErr=man?'Sigue sin haber cobertura. Se enviará solo en cuanto vuelva (deja la app abierta).':'';
     else S.colaErr='No se pudo enviar: '+errMsg(j);
     fin();return colaCount().then(function(){render(true);});
@@ -3469,8 +3478,18 @@ function sendLive(){
  packPhotos2(S.files,function(i,n){S.upP={fase:'prep',i:i,n:n};render(true);}).then(function(photos){
   S.tm.prep=Date.now()-t0;var t1=Date.now();req.photos=photos;
   req.audit=(req.audit||[]).concat([{k:'_tiempos',ocr:S.tm.ocr||[],prep:S.tm.prep,fotos:photos.length,kb:Math.round(JSON.stringify(photos).length/1024)}]);
-  S.upP={fase:'up',pct:0,n:photos.length};render(true);
-  return sendPatient(req,function(a,b,fin){S.upP={fase:fin?'srv':'up',pct:b?a/b:0,n:photos.length};if(fin)S.tm.up=Date.now()-t1;render(true);});
+  S.upP={fase:'data',pct:0,n:photos.length};render(true);S.askedOnce=false;S.netPings=0;
+  var nPh=photos.length;
+  return sendShift(req,{n:nPh,
+   onp0:function(a,b,fin){S.upP={fase:fin?'srv':'up',pct:b?a/b:0,n:nPh};if(fin)S.tm.up=Date.now()-t1;render(true);},
+   onData:function(a,b){S.upP={fase:'data',pct:b?a/b:0,n:nPh};render(true);},
+   prog:function(k,n,cur){S.upP={fase:'photo',k:k,n:n,cur:cur||0};render(true);}
+  }).then(function(j){
+   if(j&&j.ok&&j.rest&&j.rest.length){
+    return colaAddJob({key:j.key,date:req.date,reg:req.reg,photos:j.rest}).then(function(){S.flash='El turno ya está enviado a Iván. Faltan '+j.rest.length+' foto'+(j.rest.length>1?'s':'')+': se subirán solas en cuanto haya cobertura. Deja la app abierta.';return j;});
+   }
+   return j;
+  });
  }).then(function(j){
   slowLive=false;S.slowSend=null;S.upP=null;if(j&&j.ok)vib([30,60,30]);
   if(!j.ok){
@@ -4116,36 +4135,82 @@ function callX(action,data,onp){
   var body={};for(var k in (data||{}))body[k]=data[k];body.action=action;var tk=getTok();if(tk)body.token=tk;
   var x;try{x=new XMLHttpRequest();}catch(e){res(call(action,data));return;}
   var done=false;function fin(j){if(done)return;done=true;if(!j.ok)authCheck(j);res(j);}
+  var tX=Date.now(),upl='0/0',dg=function(w){return {net:w+' '+action+' '+(Date.now()-tX)+'ms subida '+upl+' estado '+x.status+' online '+(navigator.onLine?'si':'no')};};
   x.open('POST',window.TURNOS_URL,true);x.setRequestHeader('Content-Type','text/plain;charset=utf-8');x.timeout=170000;
-  if(x.upload&&onp)x.upload.onprogress=function(e){if(e.lengthComputable)onp(e.loaded,e.total);};
+  if(x.upload)x.upload.onprogress=function(e){if(e.lengthComputable){upl=e.loaded+'/'+e.total;if(onp)onp(e.loaded,e.total);}};
   if(x.upload)x.upload.onload=function(){if(onp)onp(1,1,true);};
-  x.onload=function(){var j=null;try{j=JSON.parse(x.responseText);}catch(e){}fin((j&&typeof j==='object')?j:{ok:false,error:'ERROR_SERVIDOR'});};
-  x.onerror=function(){fin({ok:false,error:'SIN_RED'});};x.ontimeout=function(){fin({ok:false,error:'SIN_RED'});};
+  x.onload=function(){var j=null;try{j=JSON.parse(x.responseText);}catch(e){}if(j&&typeof j==='object')fin(j);else{var r=dg('RESPUESTA_NO_VALIDA');r.ok=false;r.error='ERROR_SERVIDOR';r.net+=' texto '+String(x.responseText||'').slice(0,60).replace(/\s+/g,' ');fin(r);}};
+  x.onerror=function(){var r=dg('ERROR_RED');r.ok=false;r.error='SIN_RED';fin(r);};x.ontimeout=function(){var r=dg('TIEMPO_AGOTADO');r.ok=false;r.error='SIN_RED';fin(r);};
   try{x.send(JSON.stringify(body));}catch(e){fin({ok:false,error:'SIN_RED'});}
  });
 }
 /* v2.07: envío con paciencia. Si no hay señal NO se guarda al instante: la app sigue «pensando», reintenta sola y solo si tarda ofrece enviarlo en otro momento */
 var SLOW_MS=25000,slowRes=null,slowLive=false;
-function sendPatient(req,onp){
- var t0=Date.now(),T0=t0,asked=false,nF=(req.photos||[]).length;slowLive=true;
+function netPing(j){ /* v2.12: apunta en tu hoja de registro el motivo exacto del fallo de red (máx. 4 por envío) */
+ try{if(!j||!j.net)return;S.netPings=(S.netPings||0)+1;if(S.netPings>4)return;regPing('ERROR',String(j.net).slice(0,190));}catch(e){}
+}
+function patientCall(action,data,onp,slowMs){
+ var t0=Date.now(),T0=t0,asked=!!S.askedOnce;slowLive=true;
  function go(){
-  return callX('submitShift',req,onp).then(function(j){
+  return callX(action,data,onp).then(function(j){
    if(!slowLive)return j;
    if(!j||j.ok||j.error!=='SIN_RED'){S.slowSend=null;return j;}
-   S.upP={fase:'retry',n:nF,pct:0};
+   netPing(j);
+   if(S.upP)S.upP.retry=true;
    var el=Date.now()-t0;
-   if(asked){ /* ya se preguntó una vez: sigo solo; a los 3 minutos lo guardo en el móvil */
+   if(asked){ /* ya se preguntó una vez en este envío: sigo solo; a los 3 minutos lo guardo en el móvil */
     if(Date.now()-T0>180000){S.slowSend=null;return {ok:false,error:'SIN_RED'};}
-    S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);
+    S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,3000);}).then(go);
    }
-   if(el<SLOW_MS+5000*nF){S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);}
-   asked=true;S.slowSend={asked:true};render(true);
+   if(el<slowMs){S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,3000);}).then(go);}
+   asked=true;S.askedOnce=true;S.slowSend={asked:true};render(true);
    return new Promise(function(rs){slowRes=rs;}).then(function(ch){
     if(ch==='later'){S.slowSend=null;return {ok:false,error:'SIN_RED'};}
     S.slowSend={asked:false};render(true);return go();});
   });
  }
  return go();
+}
+function sendPatient(req,onp){var nF=(req.photos||[]).length;return patientCall('submitShift',req,onp,SLOW_MS+5000*nF);}
+/* v2.12: el turno y las fotos ya no viajan juntos. 1.º se guarda el turno (pequeño); 2.º las fotos de una en una, con contador real */
+var SRV212=null;
+function srvSplit(){
+ if(SRV212!==null)return Promise.resolve(SRV212);
+ return call('version212',{}).then(function(j){
+  if(j&&j.ok){SRV212=true;return true;}
+  if(j&&j.error==='ACCION_DESCONOCIDA'){SRV212=false;return false;}
+  return false;
+ });
+}
+function uploadPhotos(key,photos,ui){
+ var rest=photos.slice(),n0=ui&&ui.n?ui.n:photos.length,bad=0,tries=0;
+ function next(){
+  if(!rest.length)return Promise.resolve({ok:true,rest:[],bad:bad});
+  var p=rest[0],k=n0-rest.length,onp=function(a,b){if(ui&&ui.prog&&b)ui.prog(k,n0,Math.min(1,a/b));};
+  if(ui&&ui.prog)ui.prog(k,n0,0);
+  var pr=ui?patientCall('addPhoto',{key:key,photo:p},onp,SLOW_MS+10000):callX('addPhoto',{key:key,photo:p});
+  return pr.then(function(j){
+   if(j&&j.ok){tries=0;rest.shift();return next();}
+   if(j&&(j.error==='OCUPADO'||j.error==='ERROR_SERVIDOR')&&tries++<3)return new Promise(function(rs){setTimeout(rs,3000);}).then(next);
+   if(j&&j.error&&j.error!=='SIN_RED'&&j.error!=='OCUPADO'&&j.error!=='ERROR_SERVIDOR'&&!j.authFail){bad++;rest.shift();tries=0;return next();}
+   return {ok:false,rest:rest,net:true,bad:bad};
+  });
+ }
+ return next();
+}
+function sendShift(req,ui){
+ var photos=req.photos||[],n=photos.length;
+ function go(split){
+  if(!split||!n)return ui?sendPatient(req,ui.onp0):call('submitShift',req);
+  var cnt={};photos.forEach(function(p){if(!p.k){cnt[p.slot]=(cnt[p.slot]||0)+1;p.k=cnt[p.slot];}});
+  var r1={};for(var q in req)r1[q]=req[q];r1.photos=[];r1.nPhotos=n;
+  var p1=ui?patientCall('submitShift',r1,ui.onData,SLOW_MS):callX('submitShift',r1);
+  return p1.then(function(j){
+   if(!j||!j.ok)return j;
+   return uploadPhotos(j.key,photos,ui).then(function(r){j.rest=r.rest||[];j.bad=r.bad||0;return j;});
+  });
+ }
+ return (SRV212===null?srvSplit():Promise.resolve(SRV212)).then(go);
 }
 function slowHtml(){
  var q=S.slowSend;if(!q)return '';
@@ -4154,9 +4219,16 @@ function slowHtml(){
 }
 function upHtml(){
  var p=S.upP;if(!p)return '';
- var pct=p.fase==='prep'?Math.round(p.i/Math.max(1,p.n)*35):(p.fase==='up'?35+Math.round(p.pct*55):(p.fase==='retry'?35:(p.fase==='srv'?92:100)));
- var txt=p.fase==='prep'?'Preparando foto '+p.i+' de '+p.n:(p.fase==='up'?'Fotos subidas: '+Math.min(p.n,Math.floor(p.pct*p.n))+' de '+p.n+' · '+Math.round(p.pct*100)+' %':(p.fase==='retry'?'Reintentando el envío · 0 de '+p.n+' fotos subidas':'Fotos subidas: '+p.n+' de '+p.n+'. Comprobando y guardando…'));
- return '<div class="upbox" role="status" aria-live="polite"><div class="row sp"><b>'+txt+'</b><span class="mono">'+pct+' %</span></div><div class="uptrack"><div class="upfill" style="width:'+pct+'%"></div><div class="upvan" style="left:calc('+pct+'% - 22px)">'+VAN_MINI+'</div></div><span class="small">No cierres la app.'+(p.n?' Quedan '+Math.max(0,p.n-(p.fase==='prep'?p.i:p.n))+' fotos por preparar.':'')+'</span></div>';
+ var pct,txt,sub='No cierres la app.';
+ if(p.fase==='prep'){pct=Math.round(p.i/Math.max(1,p.n)*20);txt='Preparando foto '+p.i+' de '+p.n;sub+=' Quedan '+Math.max(0,p.n-p.i)+' fotos por preparar.';}
+ else if(p.fase==='data'){pct=20+Math.round((p.pct||0)*10);txt=(p.retry?'Reintentando · ':'')+'Guardando el turno…';}
+ else if(p.fase==='photo'){var tot=Math.max(1,p.n);pct=30+Math.round(70*(p.k+(p.cur||0))/tot);txt=(p.retry?'Reintentando · ':'')+'Fotos subidas: '+p.k+' de '+p.n;sub+=p.retry?' Sin buena señal: sigo intentándolo con la foto '+Math.min(p.n,p.k+1)+'.':' Subiendo la foto '+Math.min(p.n,p.k+1)+'.';}
+ else if(p.fase==='up'){pct=20+Math.round(p.pct*70);txt=(p.retry?'Reintentando · ':'')+'Enviado: '+Math.round(p.pct*100)+' %';}
+ else if(p.fase==='retry'){pct=30;txt='Reintentando el envío';}
+ else if(p.fase==='srv'){pct=95;txt='Comprobando y guardando…';}
+ else {pct=100;txt='Listo';}
+ pct=Math.max(0,Math.min(100,pct));
+ return '<div class="upbox" role="status" aria-live="polite"><div class="row sp"><b>'+txt+'</b><span class="mono" style="white-space:nowrap;flex:none">'+pct+' %</span></div><div class="uptrack"><div class="upfill" style="width:'+pct+'%"></div><div class="upvan" style="left:calc('+pct+'% - 22px)">'+VAN_MINI+'</div></div><span class="small">'+sub+'</span></div>';
 }
 
 /* ---------- CONTADOR ANIMADO ---------- */
