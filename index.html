@@ -563,7 +563,7 @@ button.c{cursor:pointer}
 <main class="col pad" id="app"></main>
 <nav class="tabs"><div class="col pad" id="tabs"></div></nav>
 
-<script>var APP_V='2.10';</script>
+<script>var APP_V='2.11';</script>
 <script>window.TURNOS_URL="https://script.google.com/macros/s/AKfycbxNpC5SUYZPvurlMHYPso5MHvhusatlqRWJq2wvp53cgRstDIGKOkBST5wPdSqSiCm3/exec";</script>
 <script>
 (function(){
@@ -1180,10 +1180,11 @@ function shiftCalHtml(){
  return h+'</div>';
 }
 function driverUpload(){
- if(!S.editing&&sentToday()&&!S.second)return shiftCalHtml()+'<div class="lock"><h2>Ya enviaste este día</h2><p class="muted">Si algo está mal, pídele permiso a Iván desde “Mis días”. Si has hecho un segundo turno el mismo día, pulsa el botón. Si querías subir otro día, cámbialo en el calendario.</p>'+(LIVE?'<button class="btn sm ghost" data-act="second-start">Es un segundo turno de ese día</button>':'')+'</div>';
+ if(!LIVE&&!S.editing&&sentToday()&&!S.second)return shiftCalHtml()+'<div class="lock"><h2>Ya enviaste este día</h2><p class="muted">Si algo está mal, pídele permiso a Iván desde “Mis días”. Si has hecho un segundo turno el mismo día, pulsa el botón. Si querías subir otro día, cámbialo en el calendario.</p>'+(LIVE?'<button class="btn sm ghost" data-act="second-start">Es un segundo turno de ese día</button>':'')+'</div>';
  var h='',n=S.upStep;
  if(S.mine)h+='<div class="banner ink"><b>Subiendo un turno tuyo</b><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="mine-exit">Volver al panel</button></div>';
  h+=shiftCalHtml()+dateBigHtml();
+ if(LIVE&&!S.editing&&!S.second&&sentToday())h+='<div class="banner ink"><b>Ya hay un turno enviado ese día</b><span class="small">Puedes seguir: este se guardará como segundo turno y Iván decidirá qué hacer.</span></div>';
  if(S.second&&!S.mine)h+='<div class="banner ink"><b>Segundo turno de hoy</b><span class="small">Iván recibirá un aviso de que hay dos turnos el mismo día.</span></div>';
  if(S.editing){var ed=dayById(S.editing);h+='<div class="banner ink"><b>Corrigiendo el día '+dl(ed.date)+'</b><span>Iván lo ha autorizado. Cambia lo que haga falta y reenvía.</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="edit-cancel">Cancelar corrección</button></div>';}
  h+=steps(n)+'<div class="row sp"><h2>'+STEPT[n-1]+'</h2><button class="btn sm ghost" data-act="sound">'+(S.sound?'Sonido: sí':'Sonido: no')+'</button></div>';
@@ -1799,7 +1800,7 @@ function masOdo(){
  h+='<div class="small">'+(d===null?'Todavía no hay ninguno guardado.':'Último: '+fD(S.car.odo[0].fecha)+' (hace '+d+' día'+(d===1?'':'s')+')')+'</div>';
  var O=S.odo;
  if(O&&O.thumb)h+='<div class="thumbs"><div class="th"><img alt="Odómetro" src="'+O.thumb+'"><button data-act="odo-rm" aria-label="Quitar la foto">'+I.no+'</button></div></div>';
- h+='<label class="btn sm yel" style="align-self:flex-start"><input type="file" accept="image/*" class="fi" data-slot="odometro">'+I.cam+' '+(O&&O.thumb?'Cambiar foto':'Foto del ticket de odómetro')+'</label>';
+ h+='<label class="btn sm yel" style="align-self:flex-start"><input type="file" accept="image/*" class="fi" data-slot="odocoche">'+I.cam+' '+(O&&O.thumb?'Cambiar foto':'Foto del ticket de odómetro')+'</label>';
  if(O&&O.busy)h+='<p class="small muted">Leyendo el ticket…</p>';
  if(O&&O.f){
   h+='<div class="field" style="border-top:0"><label class="nm" for="odoFe">Fecha de la lectura</label><input id="odoFe" data-odo="_fecha" type="date" value="'+esc(O.fecha||TODAY)+'"></div><div class="xlg">';
@@ -2048,6 +2049,7 @@ function masAct(a,d){
   case 'bk-now':doLive('backupAhora',{},function(j){S.gMsg='Copia hecha en Drive: '+j.nombre;});return true;
   case 'av-ok':{var dd1=dayOf(d);if(!dd1)return true;var ix1=+d.i;if(dd1.incid&&dd1.incid[ix1])dd1.incid[ix1].ok='ya';render(true);bg('editarDia',{key:dd1.key,okIdx:[ix1],motivo:'Aviso revisado'});return true;}
   case 'ed-open':{var dd2=dayOf(d);if(dd2){S.edit=edInit(dd2);S.del=null;}render(true);return true;}
+  case 'dup-prev':{var dA=dayOf(d),dB=S.days.filter(function(x){return x.id===+d.s;})[0];if(!dA||!dB)return true;if(dA.incid&&dA.incid[+d.i])dA.incid[+d.i].ok='ya';bg('editarDia',{key:dA.key,okIdx:[+d.i],motivo:'Día repetido revisado'});doLive('eliminarDia',{key:dB.key,motivo:'Repetido: sustituido por el segundo envío'},function(j){S.flash='Quitado el turno anterior.'+(j.volcado?' OJO: estaba en el Excel; revísalo allí.':'');});return true;}
   case 'lect-ok':{var dd5=dayOf(d);if(!dd5)return true;dd5.lectOk='ya';render(true);bg('editarDia',{key:dd5.key,okLect:true,motivo:'Lecturas revisadas'});return true;}
   case 'ed-cancel':S.edit=null;render(true);return true;
   case 'ed-save':{var dd3=dayOf(d);if(!dd3||!S.edit)return true;var ch={},n=0;Object.keys(S.edit.f).forEach(function(k){if(String(S.edit.f[k])!==String(S.edit.o[k])){ch[k]=String(S.edit.f[k]).replace(',','.');n++;}});
@@ -2142,6 +2144,14 @@ function edInit(d){
  var f=d.f,o={};Object.keys(ED_L).forEach(function(k){var v=f[k];if(k==='taxEfe'&&(v==null||v==='')){var e=num(f.err),a=num(f.appTax);v=isFinite(e)?r2(e-(isFinite(a)?a:0)):'';}if(k==='fnEfe'&&(v==null))v='';o[k]=(v==null)?'':String(v).replace('.',',');});
  var c={};for(var k in o)c[k]=o[k];return {id:d.id,o:o,f:c,motivo:'',err:''};
 }
+
+function dupCard(d){
+ if(!LIVE||!d.incid)return '';
+ var ix=-1;d.incid.forEach(function(x,i){if(x&&x.slot==='Día repetido'&&!x.ok)ix=i;});
+ if(ix<0)return '';
+ var sib=S.days.filter(function(x){return x.id!==d.id&&x.date===d.date&&x.driver===d.driver;})[0];
+ return '<div class="banner bad"><b>Día repetido: ¿qué hago?</b><span>'+esc(fn1(uname(d.driver)))+' ya tenía un turno enviado el '+dl(d.date)+' y este es el segundo. Tú decides.</span>'+(sib?'<span class="small">El otro turno: '+eur(num(sib.f.total))+' · '+esc(sib.f.horaIni||'')+' a '+esc(sib.f.horaFin||'')+'.</span>':'')+'<div class="row" style="flex-wrap:wrap"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+ix+'">Dejar los dos</button>'+(sib?'<button class="btn sm yel" data-act="dup-prev" data-id="'+d.id+'" data-s="'+sib.id+'" data-i="'+ix+'">Quitar el anterior</button>':'')+'<button class="btn sm bad" data-act="del-ask" data-id="'+d.id+'">Quitar este</button></div></div>';
+}
 function lectHtml(d){
  if(!LIVE||d.carga)return '';
  var f=d.f,keys=['turnoNo','nServ','kmLibre','kmOcup','tk1','tk2','tk3','tk4','tk5','tk6','tarifa3Decl','kmEntre','suplem','kmFin','rendKm','pctOcup','desconex'];
@@ -2179,7 +2189,7 @@ function masterDetail(){
  if(d.motivoAcep&&!d.carga)h+='<div class="hint">Aceptado con motivo: '+esc(d.motivoAcep)+'</div>';
  if(d.motivos.length||d.texto)h+='<div class="card stack"><span class="label">Nota del conductor</span><div class="chips">'+d.motivos.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.texto?'<p>'+esc(d.texto)+'</p>':'')+'</div>';
  if(d.incid&&d.incid.length)h+='<div class="card stack"><span class="label">Avisos del conductor · compáralos con las fotos</span>'+d.incid.map(function(x,ix){return '<div class="stack" style="border-top:1px solid var(--line);padding-top:6px"><p><b>'+esc(x.slot)+':</b> '+esc(x.text)+'</p>'+(x.ok?'<span class="chip ok">✓ Revisado por ti</span>':(LIVE?'<div class="row"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+ix+'">Está bien</button><button class="btn sm ghost" data-act="ed-open" data-id="'+d.id+'">Corregir</button></div>':''))+'</div>';}).join('')+(LIVE&&d.carpeta?'<a class="btn sm yel" style="align-self:flex-start" href="'+esc(d.carpeta)+'" target="_blank" rel="noopener">Abrir las fotos para comprobarlo</a>':'')+'</div>';
-h+=lectHtml(d)+extraHtml(d)+edHtml(d);
+h+=dupCard(d)+lectHtml(d)+extraHtml(d)+edHtml(d);
  if(d.coche)h+='<div class="card stack"><span class="label">Incidencia del coche</span><div class="chips">'+d.coche.chips.map(function(m){return '<span class="chip mute">'+esc(m)+'</span>';}).join('')+'</div>'+(d.coche.texto?'<p>'+esc(d.coche.texto)+'</p>':'')+'</div>';
  if(d.pend.length){var rz2=incidReasons(d);h+='<div class="hint">Pendiente de confirmar: '+esc(rz2.length?rz2.join(' · '):d.pend.join(', '))+'.</div>';}
  if(LIVE)h+='<div class="card stack"><h3 style="margin:0">Cambiar la fecha de este turno</h3><p class="small muted">Si se subió con un día equivocado. Si ya estaba en tu Excel, se quita de esa fila (con copia de seguridad) y se pasa a la del día correcto.</p>'+(S.cf&&S.cf.id===d.id?'<input class="inp" type="date" data-cf="fecha" max="'+TODAY+'" value="'+esc(S.cf.fecha)+'"><input class="inp" data-cf="motivo" maxlength="200" placeholder="Motivo (obligatorio)" value="'+esc(S.cf.motivo)+'" autocomplete="off">'+(S.cf.err?'<span class="small" style="color:var(--bad)">'+esc(S.cf.err)+'</span>':'')+'<div class="row"><button class="btn sm ghost" data-act="cf-x">Cancelar</button><button class="btn sm pri grow" data-act="cf-go" data-id="'+d.id+'"'+(S.busy?' disabled':'')+'>Cambiar a esa fecha</button></div>':'<button class="btn sm ghost" style="align-self:flex-start" data-act="cf-open" data-id="'+d.id+'">Cambiar la fecha ('+dw(d.date)+' '+dl(d.date)+')</button>')+'</div>';
@@ -2845,9 +2855,25 @@ function blurCheck(k,files){
 }
 function blurBanner(k){var n=(S.files[k]||[]).filter(function(f){return f&&f.__blur;}).length;return n?'<div class="banner bad"><b>'+(n>1?n+' fotos parecen borrosas':'Una foto parece borrosa')+'</b><span>Repítela con más luz y sin mover el móvil para que se lea bien.</span></div>':'';}
 function ocrRefresh(){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'))return;render(true);}
+function odoRead(file){
+ return Promise.all([ocrWorker(),ocrBitmap(file)]).then(function(a){
+  var wk=a[0],bm=a[1],w0=bm.width||bm.naturalWidth,h0=bm.height||bm.naturalHeight,sc=Math.min(1.6,2000/Math.max(w0,h0)),tw=Math.round(w0*sc),th=Math.round(h0*sc);
+  return ocrRec(wk,ocrCanvas(ocrGray(bm,0,0,w0,h0,tw,th),tw,th),4);
+ }).then(function(d){
+  var t=String(d&&d.text||''),m=t.match(/\d[\d .,]{3,9}\d/g)||[],best=null;
+  m.forEach(function(x){var v=x.replace(/[^\d]/g,'');if(v.length>=5&&v.length<=6&&+v>=20000&&(!best||v.length>best.length))best=v;});
+  return best;
+ });
+}
+window.__odoRead=odoRead;
 function ocrScan(k,files){
  if(!LIVE||window.TURNOS_NO_OCR||!window.Promise||!files.length)return;
  var kind=(k==='tpv')?'tpv':'ticket',gen=S.gen;
+ if(k==='odometro'){
+  S.ocrBusy=(S.ocrBusy||0)+1;
+  ocrQ=ocrQ.then(function(){return odoRead(files[0]);}).then(function(v){if(gen===S.gen&&v&&(S.form.odometro==null||S.form.odometro===''))S.form.odometro=v;},function(){}).then(function(){S.ocrBusy=Math.max(0,(S.ocrBusy||0)-1);render(true);});
+  render(true);return;
+ }
  if(k==='totales'){
   files.slice(0,2).forEach(function(f){
    S.ocrBusy=(S.ocrBusy||0)+1;
@@ -3423,6 +3449,7 @@ function sendLive(){
  if(tpvDateBad())inc.push({slot:'TPV',text:S.tpvDate==='otro'?'El TPV es de otro día distinto al turno ('+dFmt(shiftDate())+'), según el conductor.':(S.tpvDate?'El TPV es del '+dFmt(S.tpvDate)+' y el turno del '+dFmt(shiftDate())+' (vale el mismo día o el siguiente).':'No se pudo leer la fecha del TPV y no se eligió: hay que mirarla en la foto.')});
  if(S.ticketDate){var tdf=dayDiff(S.ticketDate,shiftDate());if(tdf!==0&&tdf!==1)inc.push({slot:'Taxímetro',text:'El ticket empieza el '+dFmt(S.ticketDate)+' y el turno se ha guardado como '+dFmt(shiftDate())+'.'});}
  fnDateIssues().forEach(function(x){inc.push({slot:'FreeNow',text:x+'.'});});
+ var autoSec=(LIVE&&!S.mine&&!S.editing&&!S.second&&sentToday());if(autoSec)inc.push({slot:'Día repetido',text:'Ya había un turno enviado ese día; se ha subido como segundo turno.'});
  condIssues().forEach(function(o){inc.push({slot:'Taxímetro',text:o.x+(S.mine?' (subido desde el modo máster)':'')});});
  var co={chips:S.coche.chips.slice(),texto:S.coche.texto.trim()};var coche=(co.chips.length||co.texto)?co:null;
  var aud=auditData();
@@ -3433,7 +3460,7 @@ function sendLive(){
  }
  if(!S.regId)S.regId=regNew();
  if(!S.editing&&!S.shiftSel)S.shiftSel=shiftDate();
- var req={reg:S.regId,version:APP_V,audit:aud,form:f,caps:S.caps,pend:pend,incid:inc,coche:coche,motivos:S.motivos.slice(),texto:S.texto,date:shiftDate(),second:!!S.second,mine:!!S.mine};
+ var req={reg:S.regId,version:APP_V,audit:aud,form:f,caps:S.caps,pend:pend,incid:inc,coche:coche,motivos:S.motivos.slice(),texto:S.texto,date:shiftDate(),second:!!S.second||autoSec,mine:!!S.mine};
  try{var ex209=buildExtra();if(ex209)req.extra=ex209;}catch(e209){}
  if(S.editing){var ed=dayById(S.editing);if(!ed){S.sendErr='No se encuentra el día a corregir.';render(true);return;}req.editKey=ed.key;req.date=ed.date;}
  S.busy=true;S.sendErr='';var t0=Date.now();S.tm=S.tm||{ocr:[]};
@@ -4111,7 +4138,7 @@ function sendPatient(req,onp){
     if(Date.now()-T0>180000){S.slowSend=null;return {ok:false,error:'SIN_RED'};}
     S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);
    }
-   if(el<SLOW_MS){S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);}
+   if(el<SLOW_MS+5000*nF){S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);}
    asked=true;S.slowSend={asked:true};render(true);
    return new Promise(function(rs){slowRes=rs;}).then(function(ch){
     if(ch==='later'){S.slowSend=null;return {ok:false,error:'SIN_RED'};}
@@ -4478,7 +4505,7 @@ document.addEventListener('change',function(e){
  if(t.dataset&&t.dataset.slot==='nomina'&&t.files&&t.files.length){var nfF=t.files[0];try{t.value='';}catch(x){}S.nomF=S.nomF||{};S.nomF.file=nfF;S.nomF.name=nfF.name||'nómina';S.nomErr='';render(true);return;}
  if(t.dataset&&t.dataset.aj&&t.type==='checkbox'&&S.aj){S.aj.anotar=t.checked;return;}
  if(t.dataset&&t.dataset.aj==='hasta'&&S.aj){render(true);return;}
- if(t.dataset&&t.dataset.slot==='odometro'&&t.files&&t.files.length){
+ if(t.dataset&&t.dataset.slot==='odocoche'&&t.files&&t.files.length){
   var of=t.files[0],ou='';try{ou=URL.createObjectURL(of);}catch(x){}
   S.odo={file:of,thumb:ou,busy:true,f:null,fecha:TODAY};S.odoErr='';S.odoMsg='';try{t.value='';}catch(x){}
   render(true);
@@ -4506,7 +4533,7 @@ document.addEventListener('change',function(e){
    cur.push(u);fl.push(f);newF.push(f);added++;if(k==='servicios')S.caps++;if(k==='freenow'){S.fn=S.fn||[];S.fn.push(fnNew());}
   });
   if(added&&k!=='gasto'&&k!=='freenow'&&LIVE)prepSoon(newF);
-  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);if(k==='taximetro'||k==='tpv'||k==='totales')ocrScan(k,newF);if(k==='freenow')fnScan(newF.start,newF);blurCheck(k,newF);}
+  if(added&&k!=='gasto'){S.slots[k]='ok';applyRead(k);if(k==='taximetro'||k==='tpv'||k==='totales'||k==='odometro')ocrScan(k,newF);if(k==='freenow')fnScan(newF.start,newF);blurCheck(k,newF);}
   if(added)beep(1);
   try{t.value='';}catch(x){}
   render(true);
