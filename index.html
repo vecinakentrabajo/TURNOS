@@ -471,8 +471,8 @@ button.c{cursor:pointer}
 .hero.go .lt.lh::before{opacity:1;clip-path:inset(0 52% 0 0);animation:ltL .9s cubic-bezier(.2,.7,.4,1) forwards}
 @keyframes ltR{0%{transform:none;opacity:1}30%{transform:translate(calc(var(--hx) * 1.2px + 10px),calc(var(--hy) * -1px)) rotate(28deg);opacity:1}100%{transform:translate(calc(var(--hx) * 2px + 26px),90px) rotate(140deg);opacity:0}}
 @keyframes ltL{0%{transform:none;opacity:1}30%{transform:translate(calc(var(--hx) * 1px - 12px),calc(var(--hy) * -.8px)) rotate(-34deg);opacity:1}100%{transform:translate(calc(var(--hx) * 1.4px - 30px),96px) rotate(-150deg);opacity:0}}
-.hero .lt.rb{animation:ltBack .5s ease-out both}
-@keyframes ltBack{from{opacity:0;transform:translateY(-12px) scale(.7)}to{opacity:1;transform:none}}
+.hero .lt.rb{animation:ltBack .9s ease-out both}
+@keyframes ltBack{0%{opacity:0;transform:translateY(-80px)}45%{opacity:1;transform:translateY(0)}62%{transform:translateY(-10px)}78%{transform:translateY(0)}88%{transform:translateY(-3px)}100%{opacity:1;transform:none}}
 .gx .smk{opacity:0}
 .gx .smk circle{opacity:0;transform-box:fill-box;transform-origin:center}
 .gx.out .smk{opacity:1}
@@ -563,7 +563,7 @@ button.c{cursor:pointer}
 <main class="col pad" id="app"></main>
 <nav class="tabs"><div class="col pad" id="tabs"></div></nav>
 
-<script>var APP_V='2.09';</script>
+<script>var APP_V='2.10';</script>
 <script>window.TURNOS_URL="https://script.google.com/macros/s/AKfycbxNpC5SUYZPvurlMHYPso5MHvhusatlqRWJq2wvp53cgRstDIGKOkBST5wPdSqSiCm3/exec";</script>
 <script>
 (function(){
@@ -785,7 +785,7 @@ function draftRestore(){
  for(var k in S.slots){if(S.slots[k]==='ok'&&!(S.thumbs[k]||[]).length&&!(k==='servicios'&&S.caps))S.slots[k]='none';}
  render();window.scrollTo(0,0);
 }
-function resetForm(){clearDraft();S.taQ=null;S.ticketCond=null;S.ticketKind=null;S.carr=null;S.tkx=null;S.totKind=null;S.dateAck=null;S.dateAsk=null;S.shiftSel=null;S.shiftFromTicket=false;S.tpvPicked=false;S.upP=null;S.tm={ocr:[]};S.shOpen=undefined;S.shMonth=null;S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
+function resetForm(){clearDraft();S.taQ=null;S.ocrErr=false;S.ticketCond=null;S.ticketKind=null;S.carr=null;S.tkx=null;S.totKind=null;S.dateAck=null;S.dateAsk=null;S.shiftSel=null;S.shiftFromTicket=false;S.tpvPicked=false;S.upP=null;S.tm={ocr:[]};S.shOpen=undefined;S.shMonth=null;S.regId=null;S.regLast=null;S.fn=[];S.ticketDate=null;S.tpvDate=null;S.tpvParts={};S.blur={};S.accErr='';S.gen=(S.gen||0)+1;S.ocr={};S.ocrErr=false;S.leaveAsk=false;S.files={};S.slots={tpv:'none',taximetro:'none',freenow:'none',servicios:'none'};S.caps=0;S.form={tarifasOk:false};S.thumbs={};S.motivos=[];S.texto='';S.sendErr='';S.upStep=1;S.slotInc={};S.coche={chips:[],texto:''};S.second=false;S.dupAsk=false;S.finc={};S.t3note=null;S.km2={};S.tkInfo=null;S.t3picked=false;S.maxStep=1;S.edF={};}
 function earnCard(ms){
  var m=MONTHS[+TODAY.slice(5,7)-1];
  return '<div class="earn"><span class="label" style="color:inherit;opacity:.7">Tu parte en '+m+' · '+drv().pct+' %</span><span class="big">'+eur(ms.t)+'</span><span class="small" style="opacity:.8">'+ms.n+' turno'+(ms.n===1?'':'s')+' este mes'+(ms.n?' · mejor día '+eur(ms.best):'')+'</span></div>';
@@ -897,7 +897,7 @@ function renderHero(){
 }
 function renderTabs(){
  var t=[],cur;
- var hide=(LIVE&&(!S.role||S.loading||S.netFail||pinNeeded()))||(S.view==='driver'&&(S.reg!=='done'||drv().status!=='ACTIVO'))||!!S.mine;
+ var hide=(LIVE&&(!S.role||S.loading||S.netFail||pinNeeded()))||(S.view==='driver'&&(S.reg!=='done'||drv().status!=='ACTIVO'))||!!S.mine||(S.view==='driver'&&S.dtab==='up'&&((S.screen==='up'&&(S.upStep||1)>=2)||S.screen==='confirm'||S.screen==='result'));
  document.querySelector('nav.tabs').hidden=hide;
  if(hide){S._lastTabs='';$('tabs').innerHTML='';return;}
  if(S.view==='driver'){
@@ -2291,6 +2291,7 @@ function renderMain(){
   else h={cc:masCCtab,panel:masterPanel,dias:masterDays,gastos:masterExp,prob:masterProb,users:masterUsers,mas:masterMas}[S.mtab]();
  }
 
+ if(S.ocrErr&&!(S.ocrBusy>0)&&S.view==='driver'&&S.dtab==='up'&&S.screen==='up')h='<div class="banner bad"><b>No he podido leer bien la foto del ticket</b><span>Repite la foto con buena luz y el ticket entero, o escribe tú los datos que ves.</span></div>'+h;
  if(S.ocrBusy>0&&S.view==='driver'&&S.dtab==='up'&&(S.screen==='up'||S.screen==='confirm'))h=thinkHtml('Un segundo, estoy leyendo las fotos…<br><span style="font-weight:400">Puedes seguir; los números aparecerán solos.</span>','<button class="btn sm ghost" data-act="ocr-skip">Seguir sin esperar</button>')+h;
  if(LIVE&&S.role){
   if(S.err)h='<div class="banner bad"><span>'+esc(S.err)+'</span><button class="btn sm ghost" style="align-self:flex-start;background:var(--surface)" data-act="err-x">Cerrar</button></div>'+h;
@@ -2817,6 +2818,7 @@ window.__tpvDate=tpvDate;
 function ocrApply(r,meta){
  S.ocr=S.ocr||{};
  if(r&&r.extra&&meta&&meta.slot==='taximetro')S.tkInfo=r.extra;
+ if(meta&&meta.slot==='taximetro'&&(!r||!r.f||!Object.keys(r.f).length)&&!(r&&r.cands&&Object.keys(r.cands).length))S.ocrErr=true;
  if(r&&meta&&meta.slot==='taximetro'){if(r.cond)S.ticketCond=r.cond;if(r.kind)S.ticketKind=r.kind;try{if(r.carr&&r.carr.length>=((S.carr||[]).length))S.carr=r.carr;if(r.tkx){S.tkx=S.tkx||{};for(var q209 in r.tkx)if(r.tkx[q209]&&!S.tkx[q209])S.tkx[q209]=r.tkx[q209];}}catch(e209){}}
  if(meta&&meta.slot==='tpv'){S.tpvParts=S.tpvParts||{};if(r.f&&r.f.tpv!=null)S.tpvParts[meta.idx]=r.f.tpv;if(r.fecha&&!S.tpvPicked)S.tpvDate=r.fecha;var ks=Object.keys(S.tpvParts);if(ks.length>1&&!(S.ocr.tpv&&S.ocr.tpv.typed)){var sm=0;ks.forEach(function(q){sm+=S.tpvParts[q];});S.form.tpv=Math.round(sm*100)/100;S.ocr.tpv={ok:true,slot:'tpv',idx:0,ar:r.ar||1.5,sum:ks.length};return;}}
  if(r&&r.fecha&&meta&&meta.slot==='taximetro'){S.ticketDate=r.fecha;S.ticketDateOk=!!r.fechaOk;if(!S.editing&&r.fecha<=TODAY&&(r.fechaOk||!S.shiftSel||S.shiftFromTicket)){S.shiftSel=r.fecha;S.mineDate=r.fecha;S.shiftFromTicket=true;}}
@@ -4098,18 +4100,22 @@ function callX(action,data,onp){
 /* v2.07: envío con paciencia. Si no hay señal NO se guarda al instante: la app sigue «pensando», reintenta sola y solo si tarda ofrece enviarlo en otro momento */
 var SLOW_MS=25000,slowRes=null,slowLive=false;
 function sendPatient(req,onp){
- var t0=Date.now();slowLive=true;
+ var t0=Date.now(),T0=t0,asked=false,nF=(req.photos||[]).length;slowLive=true;
  function go(){
   return callX('submitShift',req,onp).then(function(j){
    if(!slowLive)return j;
    if(!j||j.ok||j.error!=='SIN_RED'){S.slowSend=null;return j;}
-   S.upP=null;
+   S.upP={fase:'retry',n:nF,pct:0};
    var el=Date.now()-t0;
+   if(asked){ /* ya se preguntó una vez: sigo solo; a los 3 minutos lo guardo en el móvil */
+    if(Date.now()-T0>180000){S.slowSend=null;return {ok:false,error:'SIN_RED'};}
+    S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);
+   }
    if(el<SLOW_MS){S.slowSend={asked:false};render(true);return new Promise(function(rs){setTimeout(rs,4000);}).then(go);}
-   if(!S.slowSend||!S.slowSend.asked){S.slowSend={asked:true};render(true);}
+   asked=true;S.slowSend={asked:true};render(true);
    return new Promise(function(rs){slowRes=rs;}).then(function(ch){
     if(ch==='later'){S.slowSend=null;return {ok:false,error:'SIN_RED'};}
-    t0=Date.now();S.slowSend={asked:false};render(true);return go();});
+    S.slowSend={asked:false};render(true);return go();});
   });
  }
  return go();
@@ -4121,8 +4127,8 @@ function slowHtml(){
 }
 function upHtml(){
  var p=S.upP;if(!p)return '';
- var pct=p.fase==='prep'?Math.round(p.i/Math.max(1,p.n)*35):(p.fase==='up'?35+Math.round(p.pct*55):(p.fase==='srv'?92:100));
- var txt=p.fase==='prep'?'Preparando foto '+p.i+' de '+p.n:(p.fase==='up'?'Subiendo las '+p.n+' fotos · '+Math.round(p.pct*100)+' %':'Fotos subidas. Comprobando y guardando…');
+ var pct=p.fase==='prep'?Math.round(p.i/Math.max(1,p.n)*35):(p.fase==='up'?35+Math.round(p.pct*55):(p.fase==='retry'?35:(p.fase==='srv'?92:100)));
+ var txt=p.fase==='prep'?'Preparando foto '+p.i+' de '+p.n:(p.fase==='up'?'Fotos subidas: '+Math.min(p.n,Math.floor(p.pct*p.n))+' de '+p.n+' · '+Math.round(p.pct*100)+' %':(p.fase==='retry'?'Reintentando el envío · 0 de '+p.n+' fotos subidas':'Fotos subidas: '+p.n+' de '+p.n+'. Comprobando y guardando…'));
  return '<div class="upbox" role="status" aria-live="polite"><div class="row sp"><b>'+txt+'</b><span class="mono">'+pct+' %</span></div><div class="uptrack"><div class="upfill" style="width:'+pct+'%"></div><div class="upvan" style="left:calc('+pct+'% - 22px)">'+VAN_MINI+'</div></div><span class="small">No cierres la app.'+(p.n?' Quedan '+Math.max(0,p.n-(p.fase==='prep'?p.i:p.n))+' fotos por preparar.':'')+'</span></div>';
 }
 
@@ -4355,7 +4361,7 @@ function crash(then){
   hero.classList.remove('go');
   var L=hero.querySelectorAll('.lt');
   Array.prototype.forEach.call(L,function(l,i){l.classList.remove('lh');l.style.animationDelay=(i*.025).toFixed(2)+'s';l.classList.add('rb');});
-  setTimeout(function(){Array.prototype.forEach.call(hero.querySelectorAll('.lt'),function(l){l.classList.remove('rb');l.style.removeProperty('animation-delay');});},1600);
+  setTimeout(function(){Array.prototype.forEach.call(hero.querySelectorAll('.lt'),function(l){l.classList.remove('rb');l.style.removeProperty('animation-delay');});},2200);
  },3300);
 }
 /* SALIR: pantalla en blanco, el taxi cruza rompiendo las letras y se guarda en el garaje; después se ofrece «Volver a iniciar» */
