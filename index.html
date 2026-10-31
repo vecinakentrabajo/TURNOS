@@ -153,6 +153,7 @@ textarea{width:100%;min-height:72px;border:2px solid var(--line);border-radius:4
 textarea::placeholder{color:#6b7280!important;-webkit-text-fill-color:#6b7280}
 .fntab{width:100%;border-collapse:collapse;font-size:13px}.fntab th,.fntab td{border:1px solid var(--line);padding:5px 6px;text-align:right}.fntab th{background:var(--surface);font-weight:700}.fntab td:first-child,.fntab th:first-child{text-align:left}
 .ctbl{width:100%;border-collapse:collapse;font-size:13px}.ctbl th,.ctbl td{padding:3px 4px;text-align:right;border-bottom:1px solid var(--line)}.ctbl th:first-child,.ctbl td:first-child{text-align:left}.ctbl input{width:100%;min-width:0;padding:4px;font:inherit;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink)}.carit{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:4px}.carit.venc{border-color:var(--bad,#b00020);background:rgba(176,0,32,.07)}.carit.prox{border-color:#e0a800;background:rgba(224,168,0,.1)}.carit.ok{border-color:var(--ok,#1b7f3b)}
+.rvph{position:sticky;top:0;z-index:20;background:var(--bg);padding:4px 0;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}.rvimg{height:30vh;display:flex;align-items:center;justify-content:center;background:#000;border-radius:8px;overflow:hidden}.rvimg img{max-width:100%;max-height:100%;object-fit:contain}.rvmsg{padding:14px;text-align:center;color:var(--muted,#888)}.rvtabs{display:flex;gap:6px;flex-wrap:wrap}.rvtab{border:1px solid var(--line);background:var(--surface);color:inherit;border-radius:999px;padding:4px 10px;font:inherit;font-size:13px}.rvtab.on{background:var(--ink);color:var(--bg)}.rvnav{display:flex;align-items:center;justify-content:space-between;gap:8px}.rvdots{display:flex;gap:4px}.rvdots i{flex:1;height:5px;border-radius:3px;background:var(--line)}.rvdots i.on{background:var(--ink)}.rvdots i.dn{background:var(--ok)}.rvrow{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;border:1px solid var(--line);border-radius:6px;padding:10px 12px}.rvrow b{font-size:22px}.rvrow small{flex-basis:100%;color:var(--warn)}.rvrow.warn{background:var(--warn-bg);border-color:var(--warn)}.rvzoom{position:fixed;inset:0;z-index:50;background:#000}.rvzs{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch}.rvzs img{width:260%;max-width:none;display:block}
 .xlg{display:grid;grid-template-columns:1fr 1fr;gap:6px}.xlg>div{border:1px solid var(--line);border-radius:4px;padding:6px 8px;display:flex;flex-direction:column}
 textarea:focus,input[type=text]:focus{outline:none;border-color:var(--ink)}
 .inp{width:100%;min-height:44px;border:2px solid var(--line);border-radius:4px;background:var(--bg);padding:6px 10px}
@@ -563,7 +564,7 @@ button.c{cursor:pointer}
 <main class="col pad" id="app"></main>
 <nav class="tabs"><div class="col pad" id="tabs"></div></nav>
 
-<script>var APP_V='2.13';</script>
+<script>var APP_V='2.14';</script>
 <script>window.TURNOS_URL="https://script.google.com/macros/s/AKfycbxNpC5SUYZPvurlMHYPso5MHvhusatlqRWJq2wvp53cgRstDIGKOkBST5wPdSqSiCm3/exec";</script>
 <script>
 (function(){
@@ -2039,6 +2040,7 @@ function loadMas(){
 }
 function dayOf(d){return S.days.filter(function(x){return x.id===+d.id;})[0];}
 function masAct(a,d){
+ if(a.indexOf('rv-')===0&&rvAct(a,d))return true;
  switch(a){
   case 'flash-x':S.flash='';render(true);return true;
   case 'inst-no':try{localStorage.setItem('turnos_inst','1');}catch(e){}S.instHelp=false;S.instDone=true;render(true);return true;
@@ -2179,11 +2181,153 @@ function edHtml(d){
  if(d.hist&&d.hist.length)h+='<span class="label">Registro de cambios</span>'+d.hist.slice().reverse().map(function(p){return '<div class="small"><b>'+esc(p.cuando)+'</b> · '+esc(p.quien||'')+(p.tipo?' · '+esc(p.tipo):'')+(p.motivo?' · '+esc(p.motivo):'')+'</div>';}).join('');
  return h+'</div>';
 }
+/* ---------- v2.14 · REVISIÓN PASO A PASO (solo modo máster) ---------- */
+var SV214=null,RV_ORD=['taximetro','tpv','freenow','servicios','totales','odometro'];
+var RV_T={taximetro:'Taxímetro',tpv:'TPV',freenow:'FreeNow',servicios:'Servicios',totales:'Totales',odometro:'Odómetro'};
+var RV_QUICK=['Los km no cuadran con la foto','La fecha del ticket no coincide','El importe del TPV no cuadra','Falta una foto o se ve mal','Revisa el total del ticket'];
+function rvDay(){return S.rv?dayById(S.rv.id):null;}
+function rvLbl(k){return k==='tpvTicket'?'TPV que pone el ticket':(ED_L[k]||k);}
+function rvVal(d,k){var f=d.f,v=f[k];if(k==='taxEfe'&&(v==null||v==='')){var e=num(f.err),a=num(f.appTax);v=isFinite(e)?r2(e-(isFinite(a)?a:0)):'';}return (v==null||v==='')?'':String(v).replace('.',',');}
+function rvOpen(d){
+ S.rv={id:d.id,i:0,fotos:null,fErr:'',slot:'',pi:0,img:{},lect:null,ask:false,askTxt:'',ed:null,zoom:false,loading:{}};
+ var rv=S.rv;render();rvTop();
+ call('fotosDia',{key:d.key}).then(function(j){
+  if(S.rv!==rv)return;
+  if(j.ok){rv.fotos=j.fotos||[];SV214=true;}else{rv.fotos=[];rv.fErr=j.error==='ACCION_DESCONOCIDA'?'srv':errMsg(j);if(j.error==='ACCION_DESCONOCIDA')SV214=false;}
+  rvLoadImg();render(true);
+ });
+ call('lecturasDia',{key:d.key}).then(function(j){if(S.rv!==rv)return;rv.lect=(j.ok&&j.audit)?j.audit:[];render(true);});
+}
+function rvList(slot){return (S.rv&&S.rv.fotos||[]).filter(function(x){return x.slot===slot;});}
+function rvSlots(){var o=[];RV_ORD.forEach(function(s){if(rvList(s).length)o.push(s);});return o;}
+function rvCur(st){var rv=S.rv,sl=rvSlots();if(!sl.length)return {slot:'',list:[]};var s=rv.slot&&sl.indexOf(rv.slot)>=0?rv.slot:(sl.indexOf(st.slot)>=0?st.slot:sl[0]);return {slot:s,list:rvList(s)};}
+function rvLoadImg(){
+ var rv=S.rv,d=rvDay();if(!rv||!d||!rv.fotos)return;var st=rvSteps(d)[rv.i]||{},c=rvCur(st);if(!c.list.length)return;
+ var want=[c.list[Math.min(rv.pi,c.list.length-1)]];if(c.list[rv.pi+1])want.push(c.list[rv.pi+1]);
+ want.forEach(function(f){
+  if(!f||rv.img[f.id]||rv.loading[f.id])return;rv.loading[f.id]=1;
+  call('fotoDia',{key:d.key,id:f.id}).then(function(j){delete rv.loading[f.id];if(S.rv!==rv)return;rv.img[f.id]=j.ok?('data:'+(j.mime||'image/jpeg')+';base64,'+j.b64):'ERR';render(true);});
+ });
+}
+function rvWarn(d){ /* dudas y avisos: lo primero que se enseña */
+ var w=[];
+ (d.incid||[]).forEach(function(x,ix){if(!x.ok)w.push({t:'aviso',ix:ix,slot:x.slot,txt:x.text,photo:/tpv/i.test(x.slot+' '+x.text)?'tpv':'taximetro'});});
+ (d.res.reasons||[]).forEach(function(r){w.push({t:'calc',txt:r,photo:'taximetro'});});
+ (d.res.incomplete||[]).forEach(function(r){w.push({t:'calc',txt:'Falta: '+r,photo:'taximetro'});});
+ (d.res.missing||[]).forEach(function(r){w.push({t:'calc',txt:'Falta: '+r,photo:'taximetro'});});
+ return w;
+}
+function rvDoubts(){var m={};((S.rv&&S.rv.lect)||[]).forEach(function(a){if(!a||!a.k||a.k==='_tiempos')return;if(a.cambiado||a.dudoso||a.elegido)m[a.k]=a;});return m;}
+function rvSteps(d){
+ var ks=function(a){return a.filter(function(k){return rvVal(d,k)!==''||k==='impresora'||k==='kmTotales';});};
+ var s=[{id:'av',t:'Avisos y dudas',slot:'taximetro'}];
+ s.push({id:'k1',t:'Taxímetro · ticket',slot:'taximetro',keys:['impresora','kmTotales','horaIni','horaFin','tarifa3Decl']});
+ var k2=['nServ','kmLibre','kmOcup','tk1','tk2','tk3','tk4','tk5','tk6','turnoNo','kmEntre','suplem','kmFin','rendKm','pctOcup','desconex'].filter(function(k){return rvVal(d,k)!=='';});
+ if(k2.length)s.push({id:'k2',t:'Taxímetro · resto del ticket',slot:'taximetro',keys:k2});
+ s.push({id:'tpv',t:'TPV (datáfono)',slot:'tpv',keys:['tpv','tpvTicket'].filter(function(k){return k==='tpv'||rvVal(d,k)!=='';})});
+ s.push({id:'rec',t:'Recaudación',slot:'tpv'});
+ s.push({id:'fn',t:'FreeNow (opcional)',slot:'freenow',opt:1,keys:['freenow','fnApp','fnEfe','taxEfe','appTax'].filter(function(k){return rvVal(d,k)!=='';})});
+ s.push({id:'fin',t:'Aceptar el turno',slot:'taximetro'});
+ return s;
+}
+function rvPhoto(st){
+ var rv=S.rv,h='<div class="rvph">';
+ if(rv.fotos===null)return h+'<div class="rvmsg">Cargando fotos…</div></div>';
+ if(rv.fErr==='srv')return h+'<div class="rvmsg">Para ver las fotos aquí hay que instalar el archivo nuevo del servidor (2.14).'+(S.days&&rvDay()&&rvDay().carpeta?'<br><a href="'+esc(rvDay().carpeta)+'" target="_blank" rel="noopener">Abrir fotos en Drive</a>':'')+'</div></div>';
+ if(rv.fErr)return h+'<div class="rvmsg">No he podido cargar las fotos: '+esc(rv.fErr)+'</div></div>';
+ var sl=rvSlots();if(!sl.length)return h+'<div class="rvmsg">Este turno no tiene fotos guardadas.</div></div>';
+ var c=rvCur(st);if(rv.pi>=c.list.length)rv.pi=0;
+ h+='<div class="rvtabs">'+sl.map(function(s){return '<button class="rvtab'+(s===c.slot?' on':'')+'" data-act="rv-slot" data-s="'+s+'">'+RV_T[s]+' '+rvList(s).length+'</button>';}).join('')+'</div>';
+ var f=c.list[rv.pi],im=f&&rv.img[f.id];
+ h+='<div class="rvimg">'+(im&&im!=='ERR'?'<img src="'+im+'" alt="" data-act="rv-zoom">':'<div class="rvmsg">'+(im==='ERR'?'No se pudo cargar esta foto.':'Cargando foto…')+'</div>')+'</div>';
+ h+='<div class="rvnav">'+(c.list.length>1?'<button class="btn sm ghost" data-act="rv-pi" data-v="-1">‹</button><span class="small">Foto '+(rv.pi+1)+' de '+c.list.length+'</span><button class="btn sm ghost" data-act="rv-pi" data-v="1">›</button>':'<span class="small">1 foto</span>')+'<button class="btn sm yel" data-act="rv-zoom">🔍 Ampliar</button></div>';
+ return h+'</div>';
+}
+function rvZoom(){
+ var rv=S.rv,d=rvDay(),st=rvSteps(d)[rv.i],c=rvCur(st),f=c.list[rv.pi],im=f&&rv.img[f.id];
+ if(!im||im==='ERR')return '';
+ return '<div class="rvzoom"><button class="btn pri" data-act="rv-zoom" style="position:fixed;top:8px;right:8px;z-index:60">Cerrar</button><div class="rvzs"><img src="'+im+'" alt=""></div></div>';
+}
+function rvAskHtml(d){
+ var rv=S.rv;
+ if(!rv.ask)return '<button class="btn sm ghost" data-act="rv-ask" style="align-self:flex-start">✉ Pedir al conductor que revise</button>';
+ return '<div class="card stack"><b>Pedir a '+esc(fn1(uname(d.driver)))+' que revise este turno</b><span class="small muted">Se abre la corrección para que pueda corregirlo y reenviarlo. Le sale: «Iván lo autorizó: corregir y reenviar».</span><div class="chips">'+RV_QUICK.map(function(q,i){return '<button class="pick" data-act="rv-ask-chip" data-i="'+i+'">'+esc(q)+'</button>';}).join('')+'</div><input class="inp" id="rvAsk" type="text" maxlength="250" placeholder="Qué tiene que revisar" value="'+esc(rv.askTxt)+'" autocomplete="off">'+(rv.askErr?'<span class="small" style="color:var(--bad)">'+esc(rv.askErr)+'</span>':'')+'<div class="row"><button class="btn sm ghost" data-act="rv-ask-x">Cancelar</button><button class="btn sm pri grow" data-act="rv-ask-go"'+(S.busy?' disabled':'')+'>Enviar petición</button></div></div>';
+}
+function rvView(){
+ var d=rvDay();if(!d){S.rv=null;return masterDetail();}
+ var rv=S.rv,steps=rvSteps(d);if(rv.i>=steps.length)rv.i=steps.length-1;if(rv.i<0)rv.i=0;
+ var st=steps[rv.i],dbt=rvDoubts(),h='';
+ h+='<div id="rvtop" class="row sp"><button class="btn sm ghost" data-act="rv-exit">‹ Salir</button><span class="small mono">Paso '+(rv.i+1)+' de '+steps.length+'</span></div>';
+ h+='<div class="rvdots">'+steps.map(function(s,i){return '<i class="'+(i===rv.i?'on':(i<rv.i?'dn':''))+'"></i>';}).join('')+'</div>';
+ h+='<div class="row sp"><b>'+dw(d.date)+' '+dl(d.date)+' · '+esc(fn1(uname(d.driver)))+'</b>'+chip(d.estado,d.accepted)+'</div>';
+ h+=rvPhoto(st);
+ h+='<h3 style="margin:4px 0 0">'+esc(st.t)+'</h3>';
+ if(st.id==='av'){
+  var w=rvWarn(d),dk=Object.keys(dbt);
+  if(!w.length&&!dk.length)h+='<div class="banner ok"><b>Sin avisos ni dudas ✓</b><span>El conductor no marcó nada y todos los datos cuadran. Aun así, comprueba el resto con la foto.</span></div>';
+  w.forEach(function(x){h+='<div class="banner '+(x.t==='aviso'?'warn':'bad')+'"><b>'+(x.t==='aviso'?'Cuidado · '+esc(x.slot):'No cuadra')+'</b><span>'+esc(x.txt)+'</span>'+(x.t==='aviso'?'<div class="row"><button class="btn sm ok" data-act="av-ok" data-id="'+d.id+'" data-i="'+x.ix+'">Está bien</button><button class="btn sm ghost" data-act="rv-slot" data-s="'+x.photo+'">Ver foto</button></div>':'')+'</div>';});
+  if(dk.length){h+='<div class="card stack"><span class="label">Datos dudosos o escritos a mano · compáralos con la foto</span>';dk.forEach(function(k){var a=dbt[k];h+='<div class="rvrow warn"><span>'+esc(rvLbl(k))+'</span><b class="mono">'+esc(String(a.final==null?'—':a.final).replace('.',','))+'</b><small>'+(a.cambiado?(a.leido==null?'la app no lo leyó; lo escribió el conductor':'la app leyó '+esc(String(a.leido).replace('.',','))+' y el conductor puso '+esc(String(a.final).replace('.',','))):(a.elegido?'el conductor eligió entre dos lecturas':'lectura dudosa de la app'))+'</small></div>';});h+='</div>';}
+  if(rv.lect===null)h+='<span class="small muted">Cargando lecturas de la app…</span>';
+ }else if(st.id==='rec'){
+  h+='<div class="card kv"><div><span class="label">Total</span><b class="mono">'+eur(num(d.f.total))+'</b></div><div><span class="label">Efectivo</span><b class="mono">'+eur(num(d.f.efectivo))+'</b></div><div><span class="label">TPV</span><b class="mono">'+eur(num(d.f.tpv))+'</b></div><div><span class="label">Parte '+esc(fn1(uname(d.driver)))+'</span><b class="mono">'+eur(d.res.parte)+'</b></div></div>'+receipt(d.res);
+ }else if(st.id==='fin'){
+  var pend=rvWarn(d).filter(function(x){return x.t==='aviso';}).length;
+  h+='<div class="card stack"><p>Total <b class="mono">'+eur(num(d.f.total))+'</b> · te llevas <b class="mono">'+eur(d.res.parte?num(d.f.total)-d.res.parte:0)+'</b></p>'+(pend?'<p style="color:var(--bad)">Quedan '+pend+' aviso(s) sin revisar (se dan por revisados al aceptar).</p>':'<p class="muted">Sin avisos pendientes.</p>')+'</div>';
+  if(d.accepted)h+='<span class="chip ok">✓ Este día ya está aceptado</span>';
+  else{
+   if(d.estado!=='VERDE')h+='<div class="card stack"><span class="label">Por qué lo aceptas (obligatorio)</span><input class="inp" id="accMot" type="text" maxlength="200" value="'+esc(S.accMot!=null?S.accMot:'Revisado con las fotos, está bien')+'" autocomplete="off">'+(S.accErr?'<span class="small" style="color:var(--bad)">'+esc(S.accErr)+'</span>':'')+'</div>';
+   h+='<button class="btn '+(d.estado==='VERDE'?'ok':'pri')+' block" data-act="accept" data-id="'+d.id+'">'+(d.estado==='VERDE'?'Aceptar día':'Aclarado: aceptar día')+'</button>';
+  }
+ }else{
+  var ed=rv.ed&&rv.ed.step===st.id?rv.ed:null;
+  h+='<div class="stack">'+(st.keys||[]).map(function(k){
+   var a=dbt[k],v=rvVal(d,k);
+   if(ed&&ED_L[k])return '<div class="field"><label class="nm" for="rv_'+k+'">'+esc(rvLbl(k))+'</label><input id="rv_'+k+'" data-rved="'+k+'" type="text" inputmode="'+(k==='horaIni'||k==='horaFin'?'numeric':'decimal')+'" value="'+esc(ed.f[k])+'" autocomplete="off"></div>';
+   return '<div class="rvrow'+(a?' warn':'')+'"><span>'+esc(rvLbl(k))+'</span><b class="mono">'+(v===''?'—':esc(v))+'</b>'+(a?'<small>⚠ '+(a.cambiado?(a.leido==null?'lo escribió el conductor':'la app leyó '+esc(String(a.leido).replace('.',','))):(a.elegido?'eligió entre dos lecturas':'lectura dudosa'))+'</small>':'')+'</div>';
+  }).join('')+'</div>';
+  if(st.opt)h+='<span class="small muted">Opcional: los servicios de FreeNow los compruebo yo con tu listado. Puedes saltar este paso.</span>';
+  if(ed)h+=(ed.err?'<span class="small" style="color:var(--bad)">'+esc(ed.err)+'</span>':'')+'<div class="row"><button class="btn ghost" data-act="rv-ed-x">Cancelar</button><button class="btn pri grow" data-act="rv-ed-save" data-id="'+d.id+'"'+(S.busy?' disabled':'')+'>Guardar corrección</button></div><span class="small muted">Queda registrado: qué había, qué hay ahora, quién y cuándo.</span>';
+ }
+ if(st.id!=='fin'&&!(rv.ed&&rv.ed.step===st.id)){
+  h+='<div class="row"><button class="btn ghost" data-act="rv-back"'+(rv.i?'':' disabled')+'>‹ Atrás</button>'+(st.keys&&st.keys.length?'<button class="btn yel" data-act="rv-ed" data-s="'+st.id+'">Corregir</button>':'')+'<button class="btn '+(st.id==='av'?'pri':'ok')+' grow" data-act="rv-next">'+(st.id==='av'||st.opt?'Siguiente ›':'✓ Bien · siguiente')+'</button></div>';
+ }else if(st.id==='fin')h+='<div class="row"><button class="btn ghost" data-act="rv-back">‹ Atrás</button></div>';
+ h+=rvAskHtml(d);
+ return h+(rv.zoom?rvZoom():'');
+}
+function rvTop(){try{var e=document.getElementById('rvtop');if(e)window.scrollTo(0,Math.max(0,e.getBoundingClientRect().top+window.pageYOffset-6));}catch(x){}}
+function rvAct(a,d){
+ var rv=S.rv;
+ switch(a){
+  case 'rv-open':{var dd=dayOf(d);if(dd)rvOpen(dd);return true;}
+  case 'rv-exit':S.rv=null;render();window.scrollTo(0,0);return true;
+  case 'rv-next':if(rv){rv.i++;rv.pi=0;rv.slot='';rv.ed=null;rv.ask=false;rvLoadImg();render();rvTop();}return true;
+  case 'rv-back':if(rv){rv.i=Math.max(0,rv.i-1);rv.pi=0;rv.slot='';rv.ed=null;rvLoadImg();render();rvTop();}return true;
+  case 'rv-slot':if(rv){rv.slot=d.s;rv.pi=0;rvLoadImg();render(true);}return true;
+  case 'rv-pi':if(rv){var dd2=rvDay(),c=rvCur(rvSteps(dd2)[rv.i]);var n=c.list.length||1;rv.pi=((rv.pi+(+d.v))%n+n)%n;rvLoadImg();render(true);}return true;
+  case 'rv-zoom':if(rv){rv.zoom=!rv.zoom;render(true);}return true;
+  case 'rv-ed':{if(!rv)return true;var d3=rvDay(),st=rvSteps(d3).filter(function(s){return s.id===d.s;})[0];if(!st)return true;var o={},f={};(st.keys||[]).forEach(function(k){if(!ED_L[k])return;o[k]=rvVal(d3,k);f[k]=o[k];});rv.ed={step:st.id,o:o,f:f,err:''};render(true);return true;}
+  case 'rv-ed-x':if(rv){rv.ed=null;render(true);}return true;
+  case 'rv-ed-save':{var d4=dayOf(d);if(!d4||!rv||!rv.ed)return true;var ch={},n2=0;Object.keys(rv.ed.f).forEach(function(k){if(String(rv.ed.f[k])!==String(rv.ed.o[k])){ch[k]=String(rv.ed.f[k]).replace(',','.');n2++;}});
+   if(!n2){rv.ed.err='No has cambiado ningún dato.';render(true);return true;}
+   doLive('editarDia',{key:d4.key,form:ch,motivo:'Corregido revisando con la foto (paso a paso)'},function(j){if(S.rv)S.rv.ed=null;S.flash='Corregido y registrado.'+(j.volcado?' OJO: este día ya estaba en el Excel; corrígelo allí también.':'');});return true;}
+  case 'rv-ask':if(rv){rv.ask=true;rv.askErr='';render(true);}return true;
+  case 'rv-ask-x':if(rv){rv.ask=false;render(true);}return true;
+  case 'rv-ask-chip':if(rv){rv.askTxt=RV_QUICK[+d.i]||'';render(true);}return true;
+  case 'rv-ask-go':{var d5=rvDay();if(!d5||!rv)return true;var tx=(rv.askTxt||'').trim();if(tx.length<3){rv.askErr='Escribe qué tiene que revisar.';render(true);return true;}
+   if(S.busy)return true;S.busy=true;render(true);
+   call('pedirRevision',{key:d5.key,texto:tx}).then(function(j){S.busy=false;
+    if(j.ok){rv.ask=false;rv.askTxt='';S.flash='Petición enviada. A '+fn1(uname(d5.driver))+' le sale «Iván lo autorizó: corregir y reenviar» en ese día.';return refresh();}
+    rv.askErr=j.error==='ACCION_DESCONOCIDA'?'Falta instalar el archivo nuevo del servidor (2.14).':(j.authFail?'':errMsg(j));render(true);});
+   return true;}
+ }
+ return false;
+}
 function masterDetail(){
  var d=S.days.filter(function(x){return x.id===S.openDay;})[0];
  if(!d)return '';
  var h='<button class="btn sm ghost" data-act="close" style="align-self:flex-start">Volver</button><div class="row sp"><h2>'+dw(d.date)+' '+dl(d.date)+'</h2>'+chip(d.estado,d.accepted)+'</div>';
  h+='<p class="muted">Turno de '+esc(uname(d.driver))+' · '+d.f.horaIni+' a '+d.f.horaFin+' · '+Math.round(num(d.f.kmTotales))+' km</p>';
+ if(LIVE&&!d.carga)h+='<button class="btn yel block" data-act="rv-open" data-id="'+d.id+'">▶ Revisar paso a paso (foto + dato)</button>';
  h+=receipt(d.res);
  h+='<div class="card kv"><div><span class="label">Total</span><b class="mono">'+eur(num(d.f.total))+'</b></div><div><span class="label">Parte '+esc(fn1(uname(d.driver)))+'</span><b class="mono">'+eur(d.res.parte)+'</b></div><div><span class="label">Efectivo</span><b class="mono">'+eur(num(d.f.efectivo))+'</b></div><div><span class="label">Cobras</span><b class="mono">'+eur(d.res.cobras)+'</b></div></div>';
  if(d.carga)h+='<div class="banner ink"><b>CARGADO POR CLAUDE · LOTE '+esc(d.carga.lote)+'</b><span class="small">Este día no lo subió el conductor: se copió del Excel de trabajo el '+esc(String(d.carga.cuando||'').slice(0,16))+'. No tiene fotos.</span></div>';
@@ -2313,7 +2457,7 @@ function renderMain(){
   }
  }else{
   if(S.ctaOpen)h=ctaView();
-  else if(S.openDay)h=masterDetail();
+  else if(S.openDay)h=(S.rv&&S.rv.id===S.openDay)?rvView():masterDetail();
   else h={cc:masCCtab,panel:masterPanel,dias:masterDays,gastos:masterExp,prob:masterProb,users:masterUsers,mas:masterMas}[S.mtab]();
  }
 
@@ -3190,8 +3334,8 @@ function act(a,d){
    SLOTS.forEach(function(s){S.slots[s.k]='ok';});S.slots.servicios=ed.caps?'ok':'none';S.caps=ed.caps;
    S.motivos=ed.motivos.slice();S.texto=ed.texto;S.editing=ed.id;S.dtab='up';S.screen='up';render();return;
   case 'edit-cancel':S.editing=null;resetForm();S.dtab='days';render();return;
-  case 'open':S.openDay=+d.id;render();return;
-  case 'close':S.openDay=null;render();return;
+  case 'open':S.openDay=+d.id;S.rv=null;render();return;
+  case 'close':S.openDay=null;S.rv=null;render();return;
   case 'accept':{
    var ad=dayById(+d.id),am=$('accMot');
    if(ad&&ad.estado!=='VERDE'&&!(am&&am.value.trim())){S.accErr='Escribe en una línea por qué aceptas este día.';render(true);return;}
@@ -4569,6 +4713,8 @@ document.addEventListener('input',function(e){
  if(t.dataset.fn!==undefined&&S.fn&&S.fn[+t.dataset.fn]){var sv=S.fn[+t.dataset.fn];sv[t.dataset.fk]=t.value;if(t.dataset.fk==='imp')sv.typed=true;if(t.dataset.fk==='bon'&&sv.gross!=null&&sv.com!=null){var bv=fnNum(t.value);sv.imp=(Math.round((sv.gross-sv.com+bv)*100)/100).toFixed(2).replace('.',',');sv.typed=false;}sv.conf=false;fnSync();var fs=$('fnsum');if(fs)fs.innerHTML=fnSumHtml();}
  if(t.id==='nota')S.texto=t.value;
  if(t.dataset.ed&&S.edit)S.edit.f[t.dataset.ed]=t.value;
+ if(t.dataset.rved&&S.rv&&S.rv.ed)S.rv.ed.f[t.dataset.rved]=t.value;
+ if(t.id==='rvAsk'&&S.rv)S.rv.askTxt=t.value;
  if(t.id==='edMot'&&S.edit)S.edit.motivo=t.value;
  if(t.id==='delMot'&&S.del)S.del.motivo=t.value;
  if(t.id&&t.id.indexOf('finc_')===0){S.finc=S.finc||{};var fk=t.id.slice(5);(S.finc[fk]=S.finc[fk]||{open:true}).text=t.value;}
